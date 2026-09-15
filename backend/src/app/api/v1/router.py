@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.v1.endpoints import (
     auth,
     baselines,
+    dashboard,
     dependencies,
     organizations,
     progress,
@@ -26,3 +27,4 @@ api_router.include_router(worklogs.router)
 api_router.include_router(reports.router)
 api_router.include_router(progress.router)
 api_router.include_router(progress.cron_router)
+api_router.include_router(dashboard.router)

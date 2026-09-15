@@ -1,4 +1,5 @@
 import uuid
+from dataclasses import dataclass
 from datetime import date
 
 from sqlalchemy import func, select
@@ -106,6 +107,37 @@ async def list_report(
         base_query.order_by(Worklog.work_date.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all()), total
+
+
+@dataclass(frozen=True)
+class WorklogExportRow:
+    work_date: date
+    user_email: str
+    task_name: str
+    hours: float
+    description: str | None
+
+
+async def list_for_export(db: AsyncSession, project_id: uuid.UUID) -> list[WorklogExportRow]:
+    """Denormalized rows for the CSV export (section 4.1 point 24) — one
+    query joining in the user's email and task's name for readability."""
+    result = await db.execute(
+        select(Worklog.work_date, User.email, Task.name, Worklog.hours, Worklog.description)
+        .join(Task, Task.id == Worklog.task_id)
+        .join(User, User.id == Worklog.user_id)
+        .where(Task.project_id == project_id)
+        .order_by(Worklog.work_date)
+    )
+    return [
+        WorklogExportRow(
+            work_date=work_date,
+            user_email=user_email,
+            task_name=task_name,
+            hours=float(hours),
+            description=description,
+        )
+        for work_date, user_email, task_name, hours, description in result.all()
+    ]
 
 
 async def list_costs_by_project(

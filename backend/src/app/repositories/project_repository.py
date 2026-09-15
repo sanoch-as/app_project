@@ -17,6 +17,22 @@ async def list_active_projects(db: AsyncSession) -> list[Project]:
     return list(result.scalars().all())
 
 
+async def list_all_visible(
+    db: AsyncSession, organization_id: uuid.UUID, user_id: uuid.UUID | None
+) -> list[Project]:
+    """Unpaginated — the portfolio dashboard (section 4.1 point 4, "vista
+    consolidada de todos los proyectos") shows every visible project at
+    once, not a page of them. `user_id=None` means unrestricted (admin);
+    otherwise restricted to projects that user is a member of."""
+    query = select(Project).where(Project.organization_id == organization_id)
+    if user_id is not None:
+        query = query.join(ProjectMember, ProjectMember.project_id == Project.id).where(
+            ProjectMember.user_id == user_id
+        )
+    result = await db.execute(query.order_by(Project.created_at.desc()))
+    return list(result.scalars().all())
+
+
 async def get_by_id(
     db: AsyncSession, organization_id: uuid.UUID, project_id: uuid.UUID
 ) -> Project | None:

@@ -120,4 +120,14 @@ POST   /api/v1/progress/recalculate-all         (Authorization: Bearer <CRON_SEC
 - `POST /progress/recalculate-all` is the Vercel Cron target: no `organization_id` scoping (it iterates every `status=active` project system-wide), authenticated by `CRON_SECRET` instead of a user token, and calls the same per-project recalculation as the on-demand endpoint above.
 - `SPI`/`CPI` come back `null` (not `0` or omitted) whenever their denominator (`PV`/`AC` respectively) is `0` — most commonly, `SPI` is `null` for a project with no baseline yet.
 
+**Phase 6 — dashboards and report export**
+```
+GET    /api/v1/dashboard/summary
+GET    /api/v1/projects/{id}/dashboard
+GET    /api/v1/projects/{id}/reports/export?type=tasks|worklogs|summary
+```
+- `GET /dashboard/summary` (portfolio view): every project visible to the caller (admin: all in the org; member: only ones they belong to — same visibility rule as `GET /projects`), each with cost-weighted `percent_complete` (`EV / total budgeted cost`, not a plain average across tasks — a tiny task can't skew it as much as the biggest deliverable), live `spi`/`cpi`, and an overdue-task count. Unpaginated — a portfolio view is meant to show everything at a glance (section 4.1 point 4).
+- `GET /projects/{id}/dashboard`: same `percent_complete`/`spi`/`cpi` for one project, plus the full list of overdue tasks (`status != completed` and `end_date` in the past) and up to 5 upcoming milestones (`is_milestone = true`, `start_date` in the future, soonest first).
+- `GET /projects/{id}/reports/export`: one endpoint, three `type` values (section 7 lists a single export route, so the format/content is a query parameter rather than three separate endpoints) — `tasks`/`worklogs` return `text/csv` with a `Content-Disposition: attachment` header; `summary` returns a one-page `application/pdf` with the project's KPIs and the S-curve's numbers as a table (section 4.1 point 24 asks for "PDF simple," not a rendered chart).
+
 This section grows with each phase; see `docs/DECISIONS.md` for the reasoning behind anything that isn't a literal transcription of spec section 7.

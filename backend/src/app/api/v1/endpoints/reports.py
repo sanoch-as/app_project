@@ -1,20 +1,25 @@
 import uuid
-from datetime import date
+from datetime import UTC, date, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.enums import UserRole
 from app.core.security import CurrentUser, get_current_user
-from app.repositories import worklog_repository
+from app.repositories import task_repository, worklog_repository
 from app.schemas.common import Page
 from app.schemas.worklog import WorklogRead
+from app.services import progress_service, project_service, report_export_service
 
-router = APIRouter(prefix="/reports", tags=["reports"])
+# No single prefix: /reports/worklogs (system-wide) and
+# /projects/{id}/reports/export (project-scoped) — section 7.
+router = APIRouter(tags=["reports"])
 
 
-@router.get("/worklogs", response_model=Page[WorklogRead])
+@router.get("/reports/worklogs", response_model=Page[WorklogRead])
 async def worklogs_report(
     project_id: uuid.UUID | None = Query(default=None),
     user_id: uuid.UUID | None = Query(default=None),
@@ -42,4 +47,43 @@ async def worklogs_report(
         total=total,
         limit=limit,
         offset=offset,
+    )
+
+
+@router.get("/projects/{project_id}/reports/export")
+async def export_project_report(
+    project_id: uuid.UUID,
+    export_type: Literal["tasks", "worklogs", "summary"] = Query(alias="type"),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> Response:
+    project = await project_service.get_project_for_user(db, current_user, project_id)
+
+    if export_type == "tasks":
+        tasks = await task_repository.list_all_by_project(db, project_id)
+        csv_body = report_export_service.tasks_to_csv(tasks)
+        return Response(
+            content=csv_body,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{project.name}-tasks.csv"'},
+        )
+
+    if export_type == "worklogs":
+        rows = await worklog_repository.list_for_export(db, project_id)
+        csv_body = report_export_service.worklogs_to_csv(rows)
+        return Response(
+            content=csv_body,
+            media_type="text/csv",
+            headers={"Content-Disposition": f'attachment; filename="{project.name}-worklogs.csv"'},
+        )
+
+    # summary
+    metrics, curve = await progress_service.get_current_progress(db, project)
+    pdf_body = report_export_service.project_summary_to_pdf(
+        project, metrics, curve, datetime.now(UTC).date()
+    )
+    return Response(
+        content=pdf_body,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{project.name}-summary.pdf"'},
     )
