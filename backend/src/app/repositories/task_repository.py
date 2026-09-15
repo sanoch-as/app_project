@@ -65,6 +65,11 @@ async def list_all_by_project(
     return list(result.scalars().all())
 
 
+async def list_children(db: AsyncSession, parent_task_id: uuid.UUID) -> list[Task]:
+    result = await db.execute(select(Task).where(Task.parent_task_id == parent_task_id))
+    return list(result.scalars().all())
+
+
 async def count_siblings(
     db: AsyncSession, project_id: uuid.UUID, parent_task_id: uuid.UUID | None
 ) -> int:

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tasksApi } from "@/api/tasks";
-import type { DependencyCreate, TaskCreate, TaskStatus, TaskUpdate } from "@/types/api";
+import type { DependencyCreate, TaskCreate, TaskMove, TaskStatus, TaskUpdate } from "@/types/api";
 
 export function useProjectTasks(
   projectId: string | undefined,
@@ -52,6 +52,15 @@ export function useUpdateTask(projectId: string) {
   return useMutation({
     mutationFn: ({ taskId, payload }: { taskId: string; payload: TaskUpdate }) =>
       tasksApi.update(taskId, payload),
+    onSuccess: () => invalidateProjectTaskViews(queryClient, projectId),
+  });
+}
+
+export function useMoveTask(projectId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ taskId, payload }: { taskId: string; payload: TaskMove }) =>
+      tasksApi.move(taskId, payload),
     onSuccess: () => invalidateProjectTaskViews(queryClient, projectId),
   });
 }

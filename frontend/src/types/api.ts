@@ -228,6 +228,7 @@ export interface TaskUpdate {
   name?: string | null;
   description?: string | null;
   start_date?: string | null;
+  end_date?: string | null;
   duration_days?: number | null;
   percent_complete?: number | null;
   status?: TaskStatus | null;
@@ -236,6 +237,11 @@ export interface TaskUpdate {
   estimated_hours?: number | null;
   budgeted_cost?: number | null;
   assignees?: TaskAssigneeInput[] | null;
+}
+
+export interface TaskMove {
+  parent_task_id: string | null;
+  position: number;
 }
 
 // ---------------------------------------------------------------------------

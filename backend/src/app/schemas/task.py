@@ -45,6 +45,7 @@ class TaskUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = Field(default=None, max_length=10_000)
     start_date: date | None = None
+    end_date: date | None = None
     duration_days: int | None = Field(default=None, ge=0, le=MAX_WORKING_DAYS)
     percent_complete: float | None = Field(default=None, ge=0, le=100)
     status: TaskStatus | None = None
@@ -82,6 +83,18 @@ class TaskRead(BaseModel):
     assignees: list[TaskAssigneeRead]
     created_at: datetime
     updated_at: datetime
+
+
+class TaskMove(BaseModel):
+    """Reassigns a task's WBS parent and/or its position among the new
+    parent's (or root-level, if `parent_task_id` is None) children — see
+    POST /tasks/{task_id}/move. `position` is the desired 0-based index
+    among siblings after the move; the frontend already has the full
+    ordered sibling list in memory to compute it (drag-and-drop, section
+    "Jerarquía WBS")."""
+
+    parent_task_id: uuid.UUID | None = None
+    position: int = Field(ge=0)
 
 
 class GanttResponse(BaseModel):

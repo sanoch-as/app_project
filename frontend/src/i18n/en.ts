@@ -205,6 +205,9 @@ export const en = {
       deleteTaskMessage: 'Delete "{{name}}" ({{wbs}})? Its dependencies and worklogs are removed too.',
       logHoursTitle: "Log hours — {{name}}",
       milestone: "Milestone",
+      rollupTooltip: "Computed automatically from this task's subtasks",
+      dragToReorder: "Drag to reorder or move under another task",
+      editDate: "Edit date",
     },
     form: {
       editTitle: "Edit task — {{wbs}}",
@@ -212,8 +215,11 @@ export const en = {
       wbsParent: "WBS parent",
       topLevel: "(top level)",
       durationDays: "Duration (working days)",
+      endDate: "End date",
       endDateHint:
-        "End date is computed by the server from start date + duration using the project's working calendar — it is never entered directly.",
+        "Edit duration or end date — whichever you change, the other is recalculated from the project's working calendar.",
+      rollupNotice:
+        "Dates, duration, cost and progress are computed automatically from this task's subtasks — drag a subtask out (or delete it) to edit them directly again.",
       isMilestone: "This is a milestone (0-duration marker)",
       estimatedHours: "Estimated hours",
       budgetedCost: "Budgeted cost",

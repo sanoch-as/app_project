@@ -208,6 +208,9 @@ export const es: typeof en = {
         '¿Eliminar "{{name}}" ({{wbs}})? Sus dependencias y horas registradas también se eliminarán.',
       logHoursTitle: "Registrar horas — {{name}}",
       milestone: "Hito",
+      rollupTooltip: "Calculado automáticamente a partir de las subtareas",
+      dragToReorder: "Arrastra para reordenar o mover bajo otra tarea",
+      editDate: "Editar fecha",
     },
     form: {
       editTitle: "Editar tarea — {{wbs}}",
@@ -215,8 +218,11 @@ export const es: typeof en = {
       wbsParent: "WBS padre",
       topLevel: "(nivel superior)",
       durationDays: "Duración (días laborales)",
+      endDate: "Fecha de fin",
       endDateHint:
-        "La fecha de fin la calcula el servidor a partir de la fecha de inicio + duración, usando el calendario laboral del proyecto — nunca se ingresa directamente.",
+        "Edita la duración o la fecha de fin — la que cambies, la otra se recalcula usando el calendario laboral del proyecto.",
+      rollupNotice:
+        "Las fechas, duración, costo y progreso se calculan automáticamente a partir de las subtareas de esta tarea — arrastra una subtarea fuera (o elimínala) para poder editarlos directamente de nuevo.",
       isMilestone: "Este es un hito (marcador de duración 0)",
       estimatedHours: "Horas estimadas",
       budgetedCost: "Costo presupuestado",

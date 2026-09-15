@@ -10,7 +10,6 @@ import {
 import { Diamond, Filter, Link2, Pencil, Plus, Trash2, Clock as ClockIcon } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
-import { useDateFormat } from "@/hooks/useDateFormat";
 import { useDeleteTask, useGantt, useProjectTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
 import { useCreateWorklog } from "@/hooks/useWorklogs";
@@ -20,12 +19,14 @@ import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Modal } from "@/components/common/Modal";
 import { PriorityBadge } from "@/components/common/Badge";
 import { StatusDropdownBadge } from "@/components/common/StatusDropdownBadge";
+import { EditableDateCell } from "@/components/common/EditableDateCell";
 import { DataTable } from "@/components/common/DataTable";
 import { Button } from "@/components/common/Button";
 import { IconButton } from "@/components/common/IconButton";
 import { Dropdown, DropdownItem } from "@/components/common/Dropdown";
 import { WorklogForm } from "@/components/timesheet/WorklogForm";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
+import { TaskTreeTable } from "@/pages/projects/TaskTreeTable";
 import { DependencyManager } from "@/pages/tasks/DependencyManager";
 import type { TaskRead, TaskStatus } from "@/types/api";
 
@@ -33,7 +34,6 @@ const STATUS_OPTIONS: (TaskStatus | "")[] = ["", "not_started", "in_progress", "
 
 export function ProjectTasksTab() {
   const { t } = useTranslation();
-  const formatDate = useDateFormat();
   const { project } = useProjectDetailContext();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "">("");
   const [nameFilter, setNameFilter] = useState("");
@@ -56,6 +56,18 @@ export function ProjectTasksTab() {
 
   const memberUsers = useMemo(() => (members ?? []).map((m) => m.user), [members]);
   const allTasks = gantt?.tasks ?? data?.items ?? [];
+  const parentIds = useMemo(
+    () =>
+      new Set(
+        (gantt?.tasks ?? []).map((t) => t.parent_task_id).filter((id): id is string => id !== null),
+      ),
+    [gantt],
+  );
+  // Tree view (WBS hierarchy + drag-and-drop) is only meaningful over the
+  // whole unfiltered task list — a name/status filter can't decide how to
+  // show a matching task's non-matching ancestors, so it falls back to the
+  // flat, sortable table instead.
+  const showTree = statusFilter === "" && nameFilter.trim() === "";
 
   const columns = useMemo<ColumnDef<TaskRead>[]>(
     () => [
@@ -101,12 +113,30 @@ export function ProjectTasksTab() {
       {
         accessorKey: "start_date",
         header: t("tasks.table.startDate"),
-        cell: ({ row }) => formatDate(row.original.start_date),
+        cell: ({ row }) => (
+          <EditableDateCell
+            value={row.original.start_date}
+            disabled={parentIds.has(row.original.id)}
+            disabledTitle={t("tasks.table.rollupTooltip")}
+            onChange={(value) =>
+              updateTask.mutate({ taskId: row.original.id, payload: { start_date: value } })
+            }
+          />
+        ),
       },
       {
         accessorKey: "end_date",
         header: t("tasks.table.endDate"),
-        cell: ({ row }) => formatDate(row.original.end_date),
+        cell: ({ row }) => (
+          <EditableDateCell
+            value={row.original.end_date}
+            disabled={parentIds.has(row.original.id)}
+            disabledTitle={t("tasks.table.rollupTooltip")}
+            onChange={(value) =>
+              updateTask.mutate({ taskId: row.original.id, payload: { end_date: value } })
+            }
+          />
+        ),
       },
       {
         accessorKey: "percent_complete",
@@ -171,7 +201,7 @@ export function ProjectTasksTab() {
         ),
       },
     ],
-    [updateTask, t, formatDate],
+    [updateTask, t, parentIds],
   );
 
   const table = useReactTable({
@@ -233,7 +263,22 @@ export function ProjectTasksTab() {
       {isLoading && <LoadingSpinner />}
       <ErrorMessage error={error} />
 
-      {data && <DataTable table={table} emptyMessage={t("tasks.table.noTasksMatch")} />}
+      {showTree ? (
+        gantt ? (
+          <TaskTreeTable
+            projectId={project.id}
+            tasks={gantt.tasks}
+            onEdit={setEditingTask}
+            onManageDeps={setManagingDeps}
+            onLogHours={setLoggingHours}
+            onDelete={setDeleting}
+          />
+        ) : (
+          <LoadingSpinner />
+        )
+      ) : (
+        data && <DataTable table={table} emptyMessage={t("tasks.table.noTasksMatch")} />
+      )}
 
       {showCreate && (
         <TaskFormModal

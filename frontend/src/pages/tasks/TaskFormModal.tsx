@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -31,6 +32,12 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
   const [parentTaskId, setParentTaskId] = useState(initial?.parent_task_id ?? "");
   const [startDate, setStartDate] = useState(initial?.start_date ?? new Date().toISOString().slice(0, 10));
   const [durationDays, setDurationDays] = useState(initial?.duration_days ?? 1);
+  const [endDate, setEndDate] = useState(initial?.end_date ?? "");
+  // Which of duration/end date the user edited most recently — only that one
+  // is sent on save, letting the server derive the other (services/task_service.py).
+  const [lastDateFieldTouched, setLastDateFieldTouched] = useState<"duration" | "endDate">(
+    "duration",
+  );
   const [isMilestone, setIsMilestone] = useState(initial?.is_milestone ?? false);
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority ?? "medium");
   const [estimatedHours, setEstimatedHours] = useState(
@@ -52,6 +59,10 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
   const parentOptions = useMemo(
     () => allTasks.filter((t) => t.id !== initial?.id),
     [allTasks, initial?.id],
+  );
+  const hasChildren = useMemo(
+    () => Boolean(initial) && allTasks.some((t) => t.parent_task_id === initial?.id),
+    [allTasks, initial],
   );
 
   const mutation = initial ? updateTask : createTask;
@@ -75,27 +86,40 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
       .filter((r) => r.selected)
       .map((r) => ({ user_id: r.userId, allocation_percent: r.allocation }));
 
-    const shared = {
+    const base = {
       name,
       description: description.trim() === "" ? null : description,
-      start_date: startDate,
-      duration_days: isMilestone ? 0 : Number(durationDays),
       is_milestone: isMilestone,
       priority,
       estimated_hours: estimatedHours === "" ? null : Number(estimatedHours),
-      budgeted_cost: Number(budgetedCost),
       assignees: assigneePayload,
     };
 
     if (initial) {
-      const payload: TaskUpdate = shared;
+      // A task with subtasks has its dates/cost computed by roll-up — those
+      // fields are read-only and must not be sent (the server rejects them).
+      const payload: TaskUpdate = hasChildren
+        ? base
+        : {
+            ...base,
+            start_date: startDate,
+            budgeted_cost: Number(budgetedCost),
+            ...(isMilestone
+              ? { duration_days: 0 }
+              : lastDateFieldTouched === "endDate"
+                ? { end_date: endDate }
+                : { duration_days: Number(durationDays) }),
+          };
       updateTask.mutate(
         { taskId: initial.id, payload },
         { onSuccess: () => onClose() },
       );
     } else {
       const payload: TaskCreate = {
-        ...shared,
+        ...base,
+        start_date: startDate,
+        duration_days: isMilestone ? 0 : Number(durationDays),
+        budgeted_cost: Number(budgetedCost),
         parent_task_id: parentTaskId === "" ? null : parentTaskId,
       };
       createTask.mutate(payload, { onSuccess: () => onClose() });
@@ -160,7 +184,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
           </div>
         )}
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className={clsx("grid gap-3", initial ? "grid-cols-3" : "grid-cols-2")}>
           <div>
             <label className="label" htmlFor="start_date">
               {t("common.startDate")}
@@ -169,7 +193,8 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
               id="start_date"
               type="date"
               required
-              className="input"
+              disabled={hasChildren}
+              className="input disabled:bg-jira-hover"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
             />
@@ -183,14 +208,40 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
               type="number"
               min={0}
               required
-              disabled={isMilestone}
+              disabled={isMilestone || hasChildren}
               className="input disabled:bg-jira-hover"
               value={isMilestone ? 0 : durationDays}
-              onChange={(e) => setDurationDays(Number(e.target.value))}
+              onChange={(e) => {
+                setDurationDays(Number(e.target.value));
+                setLastDateFieldTouched("duration");
+              }}
             />
           </div>
+          {initial && (
+            <div>
+              <label className="label" htmlFor="end_date">
+                {t("tasks.form.endDate")}
+              </label>
+              <input
+                id="end_date"
+                type="date"
+                required
+                disabled={isMilestone || hasChildren}
+                className="input disabled:bg-jira-hover"
+                value={isMilestone ? startDate : endDate}
+                onChange={(e) => {
+                  setEndDate(e.target.value);
+                  setLastDateFieldTouched("endDate");
+                }}
+              />
+            </div>
+          )}
         </div>
-        <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.endDateHint")}</p>
+        {hasChildren ? (
+          <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.rollupNotice")}</p>
+        ) : (
+          <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.endDateHint")}</p>
+        )}
 
         <label className="flex items-center gap-2 text-sm text-jira-text">
           <input
@@ -242,7 +293,8 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
               type="number"
               min={0}
               step={0.01}
-              className="input"
+              disabled={hasChildren}
+              className="input disabled:bg-jira-hover"
               value={budgetedCost}
               onChange={(e) => setBudgetedCost(e.target.value)}
             />

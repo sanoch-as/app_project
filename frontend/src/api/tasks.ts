@@ -5,6 +5,7 @@ import type {
   GanttResponse,
   Page,
   TaskCreate,
+  TaskMove,
   TaskRead,
   TaskStatus,
   TaskUpdate,
@@ -30,6 +31,9 @@ export const tasksApi = {
     apiClient.patch<TaskRead>(`/tasks/${taskId}`, payload).then((r) => r.data),
 
   remove: (taskId: string) => apiClient.delete<void>(`/tasks/${taskId}`).then((r) => r.data),
+
+  move: (taskId: string, payload: TaskMove) =>
+    apiClient.post<TaskRead>(`/tasks/${taskId}/move`, payload).then((r) => r.data),
 
   gantt: (projectId: string) =>
     apiClient.get<GanttResponse>(`/projects/${projectId}/gantt`).then((r) => r.data),

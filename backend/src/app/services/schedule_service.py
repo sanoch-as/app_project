@@ -53,9 +53,16 @@ async def recalculate_schedule(
             tasks_by_id[task_id].start_date = states[task_id].start_date
             tasks_by_id[task_id].end_date = states[task_id].end_date
 
+    # Parent tasks are pure WBS roll-ups (services/rollup.py) — their dates
+    # are derived from their children, not scheduled, so they're excluded
+    # from the CPM graph and rendered as a visual summary row instead
+    # (see ADR-030). compute_critical_path already ignores any dependency
+    # edge that references an excluded node.
+    parent_ids = {t.parent_task_id for t in tasks if t.parent_task_id is not None}
     schedule_inputs = [
         TaskScheduleInput(id=t.id, start_date=t.start_date, duration_days=t.duration_days)
         for t in tasks
+        if t.id not in parent_ids
     ]
     for result in compute_critical_path(schedule_inputs, edges, calendar):
         task = tasks_by_id[result.task_id]
@@ -65,5 +72,16 @@ async def recalculate_schedule(
         task.late_finish = result.late_finish
         task.total_float = result.total_float
         task.is_critical = result.is_critical
+
+    for parent_id in parent_ids:
+        parent = tasks_by_id.get(parent_id)
+        if parent is None:
+            continue
+        parent.early_start = None
+        parent.early_finish = None
+        parent.late_start = None
+        parent.late_finish = None
+        parent.total_float = None
+        parent.is_critical = False
 
     await db.flush()

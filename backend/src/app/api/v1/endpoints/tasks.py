@@ -10,7 +10,7 @@ from app.core.security import CurrentUser, get_current_user
 from app.repositories import dependency_repository, task_repository
 from app.schemas.common import Page
 from app.schemas.dependency import DependencyRead
-from app.schemas.task import GanttResponse, TaskCreate, TaskRead, TaskUpdate
+from app.schemas.task import GanttResponse, TaskCreate, TaskMove, TaskRead, TaskUpdate
 from app.services import project_service, task_service
 
 # No single prefix: this module serves both /projects/{id}/tasks and /tasks/{id}
@@ -106,6 +106,23 @@ async def update_task(
     fields = payload.model_dump(exclude_unset=True, exclude={"assignees"})
     updated = await task_service.update_task(
         db, current_user, task, project, fields=fields, assignees=payload.assignees
+    )
+    return TaskRead.model_validate(updated)
+
+
+@router.post("/tasks/{task_id}/move", response_model=TaskRead)
+async def move_task(
+    task_id: uuid.UUID,
+    payload: TaskMove,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> TaskRead:
+    task = await task_repository.get_by_id(db, current_user.organization_id, task_id)
+    if task is None:
+        raise NotFoundError("Task not found")
+    project = await project_service.get_project_for_user(db, current_user, task.project_id)
+    updated = await task_service.move_task(
+        db, project, task, new_parent_id=payload.parent_task_id, position=payload.position
     )
     return TaskRead.model_validate(updated)
 

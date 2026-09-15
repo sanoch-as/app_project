@@ -247,6 +247,248 @@ async def test_list_tasks_filters_by_status(client: AsyncClient):
     assert body["items"][0]["id"] == task_id
 
 
+async def _create_task(client: AsyncClient, admin_token: str, project_id: str, **overrides) -> dict:
+    payload = {"name": "Task", "start_date": "2026-09-14", "duration_days": 1}
+    payload.update(overrides)
+    response = await client.post(
+        f"/api/v1/projects/{project_id}/tasks", json=payload, headers=auth_header(admin_token)
+    )
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+async def test_parent_task_is_excluded_from_critical_path(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project["id"], name="Parent", duration_days=5)
+    assert parent["is_critical"] is True  # a lone leaf task is trivially critical
+
+    await _create_task(
+        client, admin_token, project["id"], name="Child", parent_task_id=parent["id"]
+    )
+
+    parent_after = await client.get(
+        f"/api/v1/tasks/{parent['id']}", headers=auth_header(admin_token)
+    )
+    body = parent_after.json()
+    assert body["is_critical"] is False
+    assert body["total_float"] is None
+    assert body["early_start"] is None
+    assert body["early_finish"] is None
+    assert body["late_start"] is None
+    assert body["late_finish"] is None
+
+
+async def test_creating_children_rolls_up_dates_and_cost_through_grandparent(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    grandparent = await _create_task(client, admin_token, project["id"], name="Grandparent")
+    parent = await _create_task(
+        client,
+        admin_token,
+        project["id"],
+        name="Parent",
+        parent_task_id=grandparent["id"],
+    )
+    child_one = await _create_task(
+        client,
+        admin_token,
+        project["id"],
+        name="Child 1",
+        parent_task_id=parent["id"],
+        start_date="2026-09-14",
+        duration_days=1,
+        budgeted_cost=800,
+    )
+    await _create_task(
+        client,
+        admin_token,
+        project["id"],
+        name="Child 2",
+        parent_task_id=parent["id"],
+        start_date="2026-09-16",
+        duration_days=3,
+        budgeted_cost=200,
+    )
+
+    for task_id in (parent["id"], grandparent["id"]):
+        rolled_up = (
+            await client.get(f"/api/v1/tasks/{task_id}", headers=auth_header(admin_token))
+        ).json()
+        assert rolled_up["start_date"] == "2026-09-14"
+        assert rolled_up["end_date"] == "2026-09-18"
+        assert rolled_up["duration_days"] == 5
+        assert rolled_up["budgeted_cost"] == 1000
+        assert rolled_up["percent_complete"] == 0
+
+    # Completing child 1 (80% of the group's cost) should bubble a weighted
+    # 80% up through parent and grandparent.
+    await client.patch(
+        f"/api/v1/tasks/{child_one['id']}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
+    )
+    for task_id in (parent["id"], grandparent["id"]):
+        rolled_up = (
+            await client.get(f"/api/v1/tasks/{task_id}", headers=auth_header(admin_token))
+        ).json()
+        assert rolled_up["percent_complete"] == 80
+
+
+async def test_update_task_with_children_rejects_direct_rollup_field_edits(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project["id"], name="Parent")
+    await _create_task(
+        client, admin_token, project["id"], name="Child", parent_task_id=parent["id"]
+    )
+
+    blocked = await client.patch(
+        f"/api/v1/tasks/{parent['id']}",
+        json={"budgeted_cost": 500},
+        headers=auth_header(admin_token),
+    )
+    assert blocked.status_code == 422
+    assert blocked.json()["code"] == "parent_task_readonly_fields"
+
+    allowed = await client.patch(
+        f"/api/v1/tasks/{parent['id']}",
+        json={"name": "Renamed parent"},
+        headers=auth_header(admin_token),
+    )
+    assert allowed.status_code == 200
+    assert allowed.json()["name"] == "Renamed parent"
+
+
+async def test_update_task_end_date_only_derives_duration_days(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    task = await _create_task(
+        client, admin_token, project["id"], start_date="2026-09-14", duration_days=1
+    )
+    assert task["end_date"] == "2026-09-14"
+
+    updated = await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"end_date": "2026-09-18"},
+        headers=auth_header(admin_token),
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["end_date"] == "2026-09-18"
+    assert body["duration_days"] == 5
+
+
+async def test_update_task_end_date_before_start_date_is_rejected(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    task = await _create_task(
+        client, admin_token, project["id"], start_date="2026-09-14", duration_days=5
+    )
+
+    response = await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"end_date": "2026-09-10"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "invalid_end_date"
+
+
+async def test_move_task_reparents_and_renumbers_siblings(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    task_a = await _create_task(client, admin_token, project["id"], name="A")
+    task_b = await _create_task(client, admin_token, project["id"], name="B")
+    child_of_b = await _create_task(
+        client, admin_token, project["id"], name="B child", parent_task_id=task_b["id"]
+    )
+    assert task_a["wbs_code"] == "1"
+    assert task_b["wbs_code"] == "2"
+    assert child_of_b["wbs_code"] == "2.1"
+
+    moved = await client.post(
+        f"/api/v1/tasks/{task_a['id']}/move",
+        json={"parent_task_id": task_b["id"], "position": 0},
+        headers=auth_header(admin_token),
+    )
+    assert moved.status_code == 200, moved.text
+    moved_body = moved.json()
+    assert moved_body["parent_task_id"] == task_b["id"]
+    assert moved_body["wbs_code"] == "2.1"
+
+    sibling_after = await client.get(
+        f"/api/v1/tasks/{child_of_b['id']}", headers=auth_header(admin_token)
+    )
+    assert sibling_after.json()["wbs_code"] == "2.2"
+
+
+async def test_move_task_cascades_wbs_code_to_its_own_descendants(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    root = await _create_task(client, admin_token, project["id"], name="Root")
+    other_root = await _create_task(client, admin_token, project["id"], name="Other root")
+    moved_subtree = await _create_task(
+        client, admin_token, project["id"], name="Subtree head", parent_task_id=root["id"]
+    )
+    grandchild = await _create_task(
+        client,
+        admin_token,
+        project["id"],
+        name="Grandchild",
+        parent_task_id=moved_subtree["id"],
+    )
+    assert moved_subtree["wbs_code"] == "1.1"
+    assert grandchild["wbs_code"] == "1.1.1"
+
+    moved = await client.post(
+        f"/api/v1/tasks/{moved_subtree['id']}/move",
+        json={"parent_task_id": other_root["id"], "position": 0},
+        headers=auth_header(admin_token),
+    )
+    assert moved.status_code == 200, moved.text
+    assert moved.json()["wbs_code"] == "2.1"
+
+    grandchild_after = await client.get(
+        f"/api/v1/tasks/{grandchild['id']}", headers=auth_header(admin_token)
+    )
+    assert grandchild_after.json()["wbs_code"] == "2.1.1"
+    assert grandchild_after.json()["parent_task_id"] == moved_subtree["id"]
+
+
+async def test_move_task_rejects_cycle(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project["id"], name="Parent")
+    child = await _create_task(
+        client, admin_token, project["id"], name="Child", parent_task_id=parent["id"]
+    )
+
+    response = await client.post(
+        f"/api/v1/tasks/{parent['id']}/move",
+        json={"parent_task_id": child["id"], "position": 0},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 422
+    assert response.json()["code"] == "task_move_cycle"
+
+
 async def test_absurd_duration_days_is_rejected(client: AsyncClient):
     # services/working_calendar.py walks one calendar day at a time, so an
     # unbounded duration would let a single request hang indefinitely.
