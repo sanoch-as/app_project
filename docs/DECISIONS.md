@@ -212,3 +212,99 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 **Decision**: `docker-compose.yml` at the repo root defines only a `postgres` service. Backend and frontend run via `uvicorn`/`vercel dev` and `npm run dev` respectively, against that container or Neon.
 
 **Consequences**: None beyond what the spec already dictates; noted here only for completeness of the ADR log.
+
+---
+
+## ADR-018: Frontend token storage — localStorage via a Zustand `persist` store; single-retry refresh interceptor
+
+**Context**: Phase 7 needs a place to hold the access/refresh token pair and the current user/organization across page reloads. The backend has no cookie-issuing endpoint (tokens come back as JSON in the response body, not `Set-Cookie`), and CORS is configured for a bearer header (`Authorization`), not `credentials: include` cookies.
+
+**Decision**: `frontend/src/store/authStore.ts` is a Zustand store with the `persist` middleware, writing `{accessToken, refreshToken, user, organization, isAuthenticated}` to `localStorage` under the key `pmp-auth`. `frontend/src/api/client.ts` wires an Axios request interceptor that attaches `Authorization: Bearer <accessToken>`, and a response interceptor that on a `401` (excluding requests to `/auth/*` itself) calls `POST /auth/refresh` exactly once (concurrent 401s are coalesced into a single in-flight refresh promise), retries the original request with the new access token, and — if the refresh itself fails — clears the store. `ProtectedRoute` (in `components/common/ProtectedRoute.tsx`) reads `isAuthenticated` reactively and redirects to `/login`, so a cleared store immediately routes the user out without any imperative `window.location` call.
+
+**Alternatives considered**: httpOnly cookies set by the backend (rejected — would require adding cookie-issuing endpoints and CSRF handling to a backend that is already complete/committed for phases 0–6, out of scope for a frontend-only phase); holding tokens only in memory / a React context with no persistence (rejected — every page refresh would force a re-login, poor MVP UX for a tool meant to be left open during a workday); `sessionStorage` instead of `localStorage` (rejected — would log the user out every time they close the tab, which is stricter than the access-token/refresh-token expiry model already implies).
+
+**Consequences**: Tokens are readable by any JavaScript running on the page (the standard XSS-exposure trade-off of `localStorage` token storage) — acceptable for an MVP with no third-party scripts loaded. A real production hardening pass would move to httpOnly cookies plus CSRF tokens; noted in `docs/BACKLOG.md`.
+
+---
+
+## ADR-019: Kanban board uses native HTML5 drag-and-drop, no DnD library
+
+**Context**: The brief explicitly says not to add a drag-and-drop library beyond the mandated stack (section 2 lists no DnD library at all).
+
+**Decision**: `components/kanban/KanbanBoard.tsx` implements column-to-column dragging with the browser's native `draggable`/`onDragStart`/`onDragOver`/`onDrop` events, storing the dragged task's id in `event.dataTransfer` and calling `PATCH /tasks/{id}` with the new `status` on drop.
+
+**Alternatives considered**: `react-dnd` or `@dnd-kit/core` (rejected — not in the mandated stack and unnecessary for a single-axis "move card between 4 columns" interaction that native HTML5 DnD handles fully).
+
+**Consequences**: No touch-screen drag support (native HTML5 DnD is desktop-mouse-only in most browsers) — acceptable for an MVP aimed at desktop project-manager usage; noted in `docs/BACKLOG.md` if touch support is ever required.
+
+---
+
+## ADR-020: Calendar view is a hand-rolled month grid, no calendar library
+
+**Context**: The brief explicitly asks for the month calendar view to be "implemented with plain grid layout, no calendar library."
+
+**Decision**: `pages/projects/ProjectCalendarTab.tsx` computes its own Monday-start 6-week grid for the displayed month with plain `Date` arithmetic and renders it as a CSS grid, placing each task on every day between its `start_date` and `end_date` inclusive. Milestones and critical-path tasks get distinct chip colors; clicking a task chip opens the same `TaskFormModal` used everywhere else.
+
+**Alternatives considered**: `react-big-calendar`, `FullCalendar` (rejected — explicitly out of scope per the brief, and a plain grid is sufficient for the "place tasks by date" requirement with no need for drag-resize or recurring events).
+
+**Consequences**: No week/day calendar views, no drag-to-reschedule from the calendar (rescheduling is done via the Gantt or the task form) — acceptable for v1's "basic month calendar view" requirement (spec section 4.1 point 15).
+
+---
+
+## ADR-021: Gantt milestone rendering and drag-granularity limits of `frappe-gantt` 0.6.1
+
+**Context**: ADR-008 already chose `frappe-gantt`. Reading its source (`node_modules/frappe-gantt/src/index.js`/`bar.js`, version 0.6.1, pinned in `package.json`) directly — rather than assuming a newer API — shows two real limitations: (1) a zero-width bar (a milestone task, whose `start_date === end_date` per ADR-012) renders as invisible, since the library computes bar width purely from `(end - start) * column_width` with no dedicated diamond/milestone marker in this version; (2) `on_date_change` fires with plain calendar `Date` objects for the dragged bar's new start/end, with no awareness of the project's working-day calendar (weekends/holidays) that the backend's CPM engine uses to compute `end_date` from `duration_days`.
+
+**Decision**: `components/gantt/GanttChart.tsx` (1) gives milestone tasks a synthetic 1-day-wide visual bar (rendering `start_date` as both start and visual end) purely for display, tagged with a `gantt-milestone` CSS class (`gantt-overrides.css`) that recolors it gold rather than the default blue/red — the real `end_date`/`duration_days` sent to the backend are untouched; (2) on a drag-and-drop date change, computes the inclusive calendar-day span between the dragged bar's new start and end and sends that as `duration_days` alongside the new `start_date` via `PATCH /tasks/{id}` (for a milestone, only `start_date` is sent, `duration_days` stays `0` per ADR-012). Because the drag interaction has no visibility into the project's working calendar, this is a calendar-day count, not a working-day count — if the dragged span crosses a weekend/holiday, the backend's recomputed `end_date` (which walks working days per ADR-012) can land slightly later than the bar the user visually dragged to. The Gantt refetches server truth (`GET /projects/{id}/gantt`) immediately after the mutation settles, so the chart snaps to the authoritative computation on the next render rather than silently drifting.
+
+**Alternatives considered**: Upgrading to a newer `frappe-gantt` major version with built-in milestone/readonly support (rejected — the brief pins the library choice via ADR-008 without specifying a version, and 0.6.1 was the version that installed cleanly; revisiting the version is a reasonable BACKLOG item, not a phase-7 blocker); reimplementing the project's working-calendar logic in the frontend to convert a dragged calendar span into an exact working-day count before sending it (rejected — that logic already exists once, correctly, in the backend's `services/working_calendar.py`; duplicating it client-side risks the two falling out of sync, and the backend is the authoritative recompute per the brief's own "don't recompute CPM client-side" instruction).
+
+**Consequences**: Documented as a known approximation, not a bug — flagged in `docs/BACKLOG.md`. Dragging a task across a weekend/holiday may require a follow-up nudge if the resulting `end_date` isn't exactly what was visually intended; the task form's explicit `duration_days` field is the precise way to set it.
+
+---
+
+## ADR-022: `sass` added as a frontend devDependency to build `frappe-gantt`'s bundled stylesheet
+
+**Context**: `frappe-gantt`'s package `main` entry (`src/index.js`) imports its own `gantt.scss` alongside the `Gantt` class export, so importing the bare `frappe-gantt` specifier (as ADR-008's wrapper component does) pulls that Sass file into Vite's build graph. Vite has no built-in Sass compiler; without one, both `vite build` and `vite dev` fail on that import with "Preprocessor dependency not found."
+
+**Decision**: Add `sass` (Dart Sass) to `frontend/package.json` `devDependencies`. This is a build-time CSS preprocessor, not an application library (no runtime code from it ships in the bundle, and no application code imports `sass` directly) — it exists solely so Vite can compile a third-party dependency's own stylesheet, so it isn't treated as one of the "major libraries" the brief asks to avoid adding without justification, but is documented here per that same instruction's spirit ("if you truly need something not listed... just note it briefly").
+
+**Alternatives considered**: Importing only `frappe-gantt/dist/frappe-gantt.css` (the pre-compiled stylesheet) while importing the JS from a path that avoids the `.scss` import (rejected — `frappe-gantt`'s only real ES module export of the `Gantt` class lives behind the `src/index.js` entry that itself imports the `.scss`; the `dist/frappe-gantt.js` bundle is an IIFE assigning to a global `var Gantt` with no `export default`, which does not interop as an ES module import); vendoring a hand-copied, pre-compiled copy of the CSS into the repo instead of installing `sass` (rejected — silently drifts from the installed `frappe-gantt` version's actual styles).
+
+**Consequences**: One additional devDependency, isolated to the frontend build toolchain. `frappe-gantt`'s own `.scss` emits harmless Sass deprecation warnings (`darken()`/global built-ins, from the upstream library's own code, not ours) during `npm run build`/`npm run dev` — cosmetic only, build output is unaffected.
+
+---
+
+## ADR-023: No `GET /users/me` endpoint — the frontend decodes the access token's `sub` claim instead
+
+**Context**: After `POST /auth/login` (which returns only a `TokenPair`, no user object — unlike `POST /auth/register`, which returns `{organization, user, tokens}`), the SPA needs the caller's own `UserRead` to populate the auth store (name, role, for role-gated UI) and has no dedicated "get my profile" endpoint to call — the live OpenAPI schema confirms the only user-read routes are `GET /users` (list) and `GET /users/{id}`.
+
+**Decision**: `frontend/src/lib/jwt.ts` adds a minimal, unverified base64/JSON decoder for the access token's payload (it never checks the signature — the backend is the only party that needs to trust the token; the frontend only reads the `sub` claim for its own UX). `hooks/useAuth.ts`'s `useLogin` decodes the fresh access token immediately after `POST /auth/login`, reads `sub` (confirmed to be the user's UUID by reading `backend/src/app/core/security.py`'s `create_access_token`), and calls `GET /users/{sub}` to fetch the full profile before populating the auth store.
+
+**Alternatives considered**: Adding a `GET /users/me` endpoint to the backend (rejected — the brief for this phase is frontend-only and explicitly says not to touch `backend/`); storing only the email/password the user typed and re-deriving nothing (rejected — the app needs the user's `role` immediately after login to decide what UI to show, and re-fetching `GET /users` and filtering by email client-side would leak every other org member's data into that request for no reason when the token already names the exact id).
+
+**Consequences**: If the backend ever changes what the access token's `sub` claim contains, this decoder breaks silently until someone reads the mismatch in an error — worth a shared contract test across frontend/backend in a future hardening pass (see `docs/BACKLOG.md`).
+
+---
+
+## ADR-024: Task assignee pickers list project members only, not the whole organization
+
+**Context**: `TaskCreate`/`TaskUpdate`'s `assignees` field takes `{user_id, allocation_percent}[]`, and the backend validates only that each `user_id` is a user in the caller's organization (docs/api-conventions.md) — it does not require the assignee to already be a project member.
+
+**Decision**: `pages/tasks/TaskFormModal.tsx` populates its assignee checklist from `GET /projects/{id}/members` (the same list shown in the Members tab), not from `GET /users` (the whole org). This matches how project-based tools conventionally work (you assign work to people already on the project) and keeps the picker short and relevant instead of listing every organization user regardless of project relevance.
+
+**Alternatives considered**: Listing all organization users in the assignee picker (rejected — technically accepted by the backend, but a poor UX default that would let a task be assigned to someone with no other connection to the project, and would make the picker unusably long in larger organizations); auto-adding an assignee as a project member when they're assigned to a task (rejected — silently mutates project membership as a side effect of a task edit, which is surprising and not requested by the spec).
+
+**Consequences**: To assign someone to a task, they must first be added as a project member (Members tab, admin-only) — a deliberate two-step flow that keeps "who can see/work this project" and "who is this specific task assigned to" as separate, explicit actions.
+
+---
+
+## ADR-025: `pages/settings/` added for organization user management
+
+**Context**: Section 3's folder tree lists `pages/{auth,projects,tasks,reports,dashboard}` without a `settings` subfolder, but section 9 phase 7 and item 11 of this phase's brief ("User management (admin, could live under a settings page)") explicitly anticipate a home for org-wide user administration (list/invite/edit role, `cost_per_hour`, `full_name`) that doesn't belong inside any single project's routes.
+
+**Decision**: Add `frontend/src/pages/settings/UsersSettingsPage.tsx`, routed at `/settings/users` and linked from the sidebar only for `admin` users (`components/common/AppLayout.tsx`), covering `GET /users`, `POST /users/invite`, and `PATCH /users/{id}`.
+
+**Alternatives considered**: Cramming user management into `pages/dashboard/` or `pages/projects/` to avoid adding a new top-level pages subfolder (rejected — org user administration is neither a project-scoped nor a dashboard concern; forcing it into either existing folder would be a worse fit than the one extra, clearly-named subfolder the brief itself suggested).
+
+**Consequences**: None beyond one additional `pages/` subfolder alongside the five the spec names; no route, model, or API changes result from it.

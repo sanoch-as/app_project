@@ -1,0 +1,51 @@
+/* Overrides layered on top of frappe-gantt's own stylesheet (imported
+   alongside this file in GanttChart.tsx). Kept separate from
+   src/styles/index.css per ADR-008 (frappe-gantt is a vanilla-JS widget, not
+   a themable React component, so it gets its own small stylesheet). */
+
+.gantt-chart-container .gantt-container {
+  border: 1px solid #e2e8f0;
+  border-radius: 0.5rem;
+  background: #fff;
+}
+
+/* Critical path (server-computed is_critical / total_float === 0): red bars. */
+.gantt-chart-container .bar-wrapper.gantt-critical .bar {
+  fill: #fecaca;
+  stroke: #dc2626;
+  stroke-width: 1.5;
+}
+.gantt-chart-container .bar-wrapper.gantt-critical .bar-progress {
+  fill: #dc2626;
+}
+.gantt-chart-container .bar-wrapper.gantt-critical .bar-label {
+  fill: #7f1d1d;
+  font-weight: 600;
+}
+
+/* Milestones: duration_days = 0, rendered as a thin gold marker (frappe-gantt
+   0.6.1 has no built-in diamond marker) — see ADR-021. */
+.gantt-chart-container .bar-wrapper.gantt-milestone .bar {
+  fill: #fde68a;
+  stroke: #b45309;
+  stroke-width: 1.5;
+}
+.gantt-chart-container .bar-wrapper.gantt-milestone .bar-label {
+  fill: #78350f;
+  font-weight: 600;
+}
+
+.gantt-chart-container .bar-wrapper .bar {
+  fill: #bfdbfe;
+}
+.gantt-chart-container .bar-wrapper .bar-progress {
+  fill: #2563eb;
+}
+.gantt-chart-container .bar-wrapper.gantt-completed .bar-progress {
+  fill: #16a34a;
+}
+
+.gantt-chart-container .today-highlight {
+  fill: #fef3c7;
+  opacity: 0.5;
+}
