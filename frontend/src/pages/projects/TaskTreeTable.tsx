@@ -21,7 +21,7 @@ import { useMoveTask, useUpdateTask } from "@/hooks/useTasks";
 import type { TaskRead, TaskStatus } from "@/types/api";
 
 const GRID_COLS =
-  "grid grid-cols-[28px_90px_minmax(220px,1fr)_140px_90px_110px_110px_64px_130px_160px_140px] items-center";
+  "grid grid-cols-[28px_90px_minmax(220px,1fr)_140px_90px_132px_132px_64px_130px_160px_140px] items-center";
 
 interface TaskTreeTableProps {
   projectId: string;
@@ -165,7 +165,7 @@ export function TaskTreeTable({
         onDragCancel={() => setActiveId(null)}
         onDragEnd={handleDragEnd}
       >
-        <div className="min-w-[1180px]">
+        <div className="min-w-[1224px]">
           <div className={clsx(GRID_COLS, "border-b border-jira-border bg-jira-panel px-3 py-2 text-xs font-bold uppercase tracking-wide text-jira-textSub")}>
             <span />
             <span>{t("tasks.table.key")}</span>

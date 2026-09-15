@@ -32,10 +32,16 @@ export function EditableDateCell({ value, disabled, disabledTitle, onChange }: E
         type="date"
         autoFocus
         defaultValue={value}
-        className="input w-36 py-0.5 text-xs"
+        className="input w-full min-w-0 py-0.5 text-xs"
         onChange={(e) => {
-          if (e.target.value && e.target.value !== value) onChange(e.target.value);
-          setEditing(false);
+          // The native date input fires `change` as soon as one segment
+          // (day/month/year) is filled in, with an empty value until every
+          // segment is — closing the editor here would kick the user out
+          // mid-type, so only commit (and close) once the date is complete.
+          if (e.target.value && e.target.value !== value) {
+            onChange(e.target.value);
+            setEditing(false);
+          }
         }}
         onBlur={() => setEditing(false)}
       />
