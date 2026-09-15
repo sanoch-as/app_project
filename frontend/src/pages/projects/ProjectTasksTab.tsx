@@ -8,7 +8,9 @@ import {
   type SortingState,
 } from "@tanstack/react-table";
 import { Diamond, Filter, Link2, Pencil, Plus, Trash2, Clock as ClockIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { useDeleteTask, useGantt, useProjectTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
 import { useCreateWorklog } from "@/hooks/useWorklogs";
@@ -30,6 +32,8 @@ import type { TaskRead, TaskStatus } from "@/types/api";
 const STATUS_OPTIONS: (TaskStatus | "")[] = ["", "not_started", "in_progress", "blocked", "completed"];
 
 export function ProjectTasksTab() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const { project } = useProjectDetailContext();
   const [statusFilter, setStatusFilter] = useState<TaskStatus | "">("");
   const [nameFilter, setNameFilter] = useState("");
@@ -57,7 +61,7 @@ export function ProjectTasksTab() {
     () => [
       {
         accessorKey: "wbs_code",
-        header: "Key",
+        header: t("tasks.table.key"),
         cell: ({ row }) => (
           <span className="rounded bg-jira-blueBadgeBg px-1.5 py-0.5 font-mono text-xs font-semibold text-jira-blueBadgeText">
             {row.original.wbs_code}
@@ -66,13 +70,13 @@ export function ProjectTasksTab() {
       },
       {
         accessorKey: "name",
-        header: "Name",
+        header: t("common.name"),
         cell: ({ row }) => (
           <span className="inline-flex items-center gap-1.5">
             {row.original.is_milestone && (
               <Diamond
                 className="h-3 w-3 shrink-0 fill-jira-orange text-jira-orange"
-                aria-label="Milestone"
+                aria-label={t("tasks.table.milestone")}
               />
             )}
             {row.original.name}
@@ -81,7 +85,7 @@ export function ProjectTasksTab() {
       },
       {
         accessorKey: "status",
-        header: "Status",
+        header: t("common.status"),
         cell: ({ row }) => (
           <StatusDropdownBadge
             status={row.original.status}
@@ -91,33 +95,43 @@ export function ProjectTasksTab() {
       },
       {
         accessorKey: "priority",
-        header: "Priority",
+        header: t("tasks.table.priority"),
         cell: ({ row }) => <PriorityBadge priority={row.original.priority} />,
       },
-      { accessorKey: "start_date", header: "Start" },
-      { accessorKey: "end_date", header: "End" },
+      {
+        accessorKey: "start_date",
+        header: t("tasks.table.startDate"),
+        cell: ({ row }) => formatDate(row.original.start_date),
+      },
+      {
+        accessorKey: "end_date",
+        header: t("tasks.table.endDate"),
+        cell: ({ row }) => formatDate(row.original.end_date),
+      },
       {
         accessorKey: "percent_complete",
-        header: "% Done",
+        header: t("tasks.table.percentDone"),
         cell: ({ row }) => `${row.original.percent_complete}%`,
       },
       {
         id: "critical",
-        header: "Critical",
+        header: t("tasks.table.critical"),
         cell: ({ row }) =>
           row.original.is_critical ? (
             <span className="badge-pill normal-case bg-jira-red/10 text-jira-red">
-              critical · {row.original.total_float ?? 0}d float
+              {t("tasks.table.criticalFloat", { days: row.original.total_float ?? 0 })}
             </span>
           ) : (
             <span className="text-xs text-jira-textSub">
-              {row.original.total_float ?? "—"}d float
+              {row.original.total_float !== null
+                ? t("tasks.table.float", { days: row.original.total_float })
+                : "—"}
             </span>
           ),
       },
       {
         id: "assignees",
-        header: "Assignees",
+        header: t("tasks.table.assignees"),
         cell: ({ row }) =>
           row.original.assignees.length > 0
             ? row.original.assignees.map((a) => a.user.full_name).join(", ")
@@ -131,25 +145,25 @@ export function ProjectTasksTab() {
             <IconButton
               icon={Pencil}
               size="sm"
-              aria-label="Edit task"
+              aria-label={t("tasks.table.editTask")}
               onClick={() => setEditingTask(row.original)}
             />
             <IconButton
               icon={Link2}
               size="sm"
-              aria-label="Manage dependencies"
+              aria-label={t("tasks.table.manageDependencies")}
               onClick={() => setManagingDeps(row.original)}
             />
             <IconButton
               icon={ClockIcon}
               size="sm"
-              aria-label="Log hours"
+              aria-label={t("tasks.table.logHours")}
               onClick={() => setLoggingHours(row.original)}
             />
             <IconButton
               icon={Trash2}
               size="sm"
-              aria-label="Delete task"
+              aria-label={t("tasks.table.deleteTask")}
               className="hover:bg-jira-red/10 hover:text-jira-red"
               onClick={() => setDeleting(row.original)}
             />
@@ -157,7 +171,7 @@ export function ProjectTasksTab() {
         ),
       },
     ],
-    [updateTask],
+    [updateTask, t, formatDate],
   );
 
   const table = useReactTable({
@@ -174,7 +188,8 @@ export function ProjectTasksTab() {
       row.original.wbs_code.toLowerCase().includes(filterValue.toLowerCase()),
   });
 
-  const statusFilterLabel = statusFilter === "" ? "All statuses" : statusFilter.replace("_", " ");
+  const statusFilterLabel =
+    statusFilter === "" ? t("tasks.table.allStatuses") : t(`enums.taskStatus.${statusFilter}`);
 
   return (
     <div>
@@ -182,14 +197,14 @@ export function ProjectTasksTab() {
         <div className="flex flex-wrap items-center gap-2">
           <input
             className="input w-56"
-            placeholder="Search by name or WBS…"
+            placeholder={t("tasks.table.searchPlaceholder")}
             value={nameFilter}
             onChange={(e) => setNameFilter(e.target.value)}
           />
           <Dropdown
             trigger={({ toggle }) => (
               <Button variant="secondary" size="sm" iconLeft={Filter} onClick={toggle}>
-                <span className="capitalize">{statusFilterLabel}</span>
+                <span>{statusFilterLabel}</span>
               </Button>
             )}
           >
@@ -198,13 +213,12 @@ export function ProjectTasksTab() {
                 {STATUS_OPTIONS.map((s) => (
                   <DropdownItem
                     key={s}
-                    className="capitalize"
                     onClick={() => {
                       setStatusFilter(s);
                       close();
                     }}
                   >
-                    {s === "" ? "All statuses" : s.replace("_", " ")}
+                    {s === "" ? t("tasks.table.allStatuses") : t(`enums.taskStatus.${s}`)}
                   </DropdownItem>
                 ))}
               </>
@@ -212,14 +226,14 @@ export function ProjectTasksTab() {
           </Dropdown>
         </div>
         <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
-          New task
+          {t("tasks.table.newTask")}
         </Button>
       </div>
 
       {isLoading && <LoadingSpinner />}
       <ErrorMessage error={error} />
 
-      {data && <DataTable table={table} emptyMessage="No tasks match." />}
+      {data && <DataTable table={table} emptyMessage={t("tasks.table.noTasksMatch")} />}
 
       {showCreate && (
         <TaskFormModal
@@ -252,9 +266,9 @@ export function ProjectTasksTab() {
       )}
       {deleting && (
         <ConfirmDialog
-          title="Delete task"
-          message={`Delete "${deleting.name}" (${deleting.wbs_code})? Its dependencies and worklogs are removed too.`}
-          confirmLabel="Delete"
+          title={t("tasks.table.deleteTaskTitle")}
+          message={t("tasks.table.deleteTaskMessage", { name: deleting.name, wbs: deleting.wbs_code })}
+          confirmLabel={t("common.delete")}
           busy={deleteTask.isPending}
           onCancel={() => setDeleting(null)}
           onConfirm={() => {
@@ -276,9 +290,10 @@ function LogHoursModal({
   projectId: string;
   onClose: () => void;
 }) {
+  const { t } = useTranslation();
   const createWorklog = useCreateWorklog(task.id, projectId);
   return (
-    <Modal title={`Log hours — ${task.name}`} onClose={onClose}>
+    <Modal title={t("tasks.table.logHoursTitle", { name: task.name })} onClose={onClose}>
       <WorklogForm
         isPending={createWorklog.isPending}
         error={createWorklog.error}

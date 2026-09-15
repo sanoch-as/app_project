@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { useDeleteProject, useProjects } from "@/hooks/useProjects";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
@@ -8,10 +9,13 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ProjectStatusBadge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
 import type { ProjectRead } from "@/types/api";
 
 export function ProjectsListPage() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const role = useAuthStore((s) => s.user?.role);
   const { data, isLoading, error } = useProjects({ limit: 100 });
   const deleteProject = useDeleteProject();
@@ -24,12 +28,12 @@ export function ProjectsListPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-jira-text">Projects</h1>
-          <p className="text-sm text-jira-textSub">All projects visible to you.</p>
+          <h1 className="text-xl font-semibold text-jira-text">{t("projects.list.title")}</h1>
+          <p className="text-sm text-jira-textSub">{t("projects.list.subtitle")}</p>
         </div>
         {role === "admin" && (
           <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
-            New project
+            {t("projects.list.newProject")}
           </Button>
         )}
       </div>
@@ -42,10 +46,10 @@ export function ProjectsListPage() {
           <table className="min-w-full divide-y divide-jira-border text-sm">
             <thead className="bg-jira-panel">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Status</th>
-                <th className="px-4 py-2">Start</th>
-                <th className="px-4 py-2">End</th>
+                <th className="px-4 py-2">{t("common.name")}</th>
+                <th className="px-4 py-2">{t("common.status")}</th>
+                <th className="px-4 py-2">{t("projects.list.columnStart")}</th>
+                <th className="px-4 py-2">{t("projects.list.columnEnd")}</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -60,8 +64,8 @@ export function ProjectsListPage() {
                   <td className="px-4 py-2">
                     <ProjectStatusBadge status={project.status} />
                   </td>
-                  <td className="px-4 py-2 text-jira-textSub">{project.start_date ?? "—"}</td>
-                  <td className="px-4 py-2 text-jira-textSub">{project.end_date ?? "—"}</td>
+                  <td className="px-4 py-2 text-jira-textSub">{formatDate(project.start_date)}</td>
+                  <td className="px-4 py-2 text-jira-textSub">{formatDate(project.end_date)}</td>
                   <td className="px-4 py-2 text-right">
                     {role === "admin" && (
                       <div className="flex justify-end gap-3">
@@ -70,14 +74,14 @@ export function ProjectsListPage() {
                           className="text-xs font-medium text-brand-600 hover:underline"
                           onClick={() => setEditing(project)}
                         >
-                          Edit
+                          {t("common.edit")}
                         </button>
                         <button
                           type="button"
                           className="text-xs font-medium text-jira-red hover:underline"
                           onClick={() => setDeleting(project)}
                         >
-                          Delete
+                          {t("common.delete")}
                         </button>
                       </div>
                     )}
@@ -87,7 +91,7 @@ export function ProjectsListPage() {
               {data.items.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-4 py-8 text-center text-jira-textSub">
-                    No projects yet.
+                    {t("projects.list.noProjectsYet")}
                   </td>
                 </tr>
               )}
@@ -100,9 +104,9 @@ export function ProjectsListPage() {
       {editing && <ProjectFormModal initial={editing} onClose={() => setEditing(null)} />}
       {deleting && (
         <ConfirmDialog
-          title="Delete project"
-          message={`Delete "${deleting.name}" and all of its tasks, dependencies, baselines and worklogs? This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("projects.list.deleteTitle")}
+          message={t("projects.list.deleteMessage", { name: deleting.name })}
+          confirmLabel={t("common.delete")}
           busy={deleteProject.isPending}
           onCancel={() => setDeleting(null)}
           onConfirm={() => {

@@ -1,37 +1,39 @@
 import { Link } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { usePortfolioSummary } from "@/hooks/useDashboard";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ProjectStatusBadge, IndexBadge } from "@/components/common/Badge";
 
 export function PortfolioDashboardPage() {
+  const { t } = useTranslation();
   const { data, isLoading, error } = usePortfolioSummary();
 
   return (
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-jira-text">Portfolio dashboard</h1>
-          <p className="text-sm text-jira-textSub">
-            Consolidated view of every project you can see.
-          </p>
+          <h1 className="text-xl font-semibold text-jira-text">{t("dashboard.title")}</h1>
+          <p className="text-sm text-jira-textSub">{t("dashboard.subtitle")}</p>
         </div>
         <Link to="/projects" className="btn-secondary">
-          Manage projects
+          {t("dashboard.manageProjects")}
         </Link>
       </div>
 
-      {isLoading && <LoadingSpinner label="Loading portfolio…" />}
+      {isLoading && <LoadingSpinner label={t("dashboard.loadingPortfolio")} />}
       <ErrorMessage error={error} />
 
       {data && (
         <>
-          <div className="mb-4 text-sm text-jira-textSub">{data.total_projects} project(s)</div>
+          <div className="mb-4 text-sm text-jira-textSub">
+            {t("dashboard.project", { count: data.total_projects })}
+          </div>
           {data.projects.length === 0 ? (
             <div className="card p-8 text-center text-sm text-jira-textSub">
-              No projects yet.{" "}
+              {t("dashboard.noProjectsYet")}{" "}
               <Link to="/projects" className="font-medium text-brand-600 hover:underline">
-                Create one
+                {t("dashboard.createOne")}
               </Link>
               .
             </div>
@@ -49,7 +51,7 @@ export function PortfolioDashboardPage() {
                   </div>
                   <div className="mb-3">
                     <div className="mb-1 flex justify-between text-xs text-jira-textSub">
-                      <span>Progress</span>
+                      <span>{t("dashboard.progress")}</span>
                       <span>{p.percent_complete.toFixed(0)}%</span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-jira-hover">
@@ -64,7 +66,7 @@ export function PortfolioDashboardPage() {
                     <IndexBadge label="CPI" value={p.cpi} />
                     {p.overdue_task_count > 0 && (
                       <span className="badge-pill normal-case bg-red-50 text-jira-red">
-                        {p.overdue_task_count} overdue
+                        {t("dashboard.overdue", { count: p.overdue_task_count })}
                       </span>
                     )}
                   </div>

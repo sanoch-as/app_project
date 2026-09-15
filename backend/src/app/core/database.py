@@ -6,7 +6,15 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
-from app.core.enums import DependencyType, ProjectStatus, TaskPriority, TaskStatus, UserRole
+from app.core.enums import (
+    DateFormat,
+    DependencyType,
+    Language,
+    ProjectStatus,
+    TaskPriority,
+    TaskStatus,
+    UserRole,
+)
 
 
 def _pg_enum(enum_cls: type, name: str) -> SAEnum:
@@ -34,6 +42,8 @@ class Base(DeclarativeBase):
         TaskStatus: _pg_enum(TaskStatus, "task_status"),
         TaskPriority: _pg_enum(TaskPriority, "task_priority"),
         DependencyType: _pg_enum(DependencyType, "dependency_type"),
+        Language: _pg_enum(Language, "language"),
+        DateFormat: _pg_enum(DateFormat, "date_format"),
     }
 
 

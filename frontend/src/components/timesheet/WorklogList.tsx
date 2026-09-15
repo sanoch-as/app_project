@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { UserRead, WorklogRead } from "@/types/api";
 import { useAuthStore } from "@/store/authStore";
 import { Modal } from "@/components/common/Modal";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { IconButton } from "@/components/common/IconButton";
 import { WorklogForm } from "@/components/timesheet/WorklogForm";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { getApiErrorMessage } from "@/api/client";
 
 interface WorklogListProps {
@@ -34,6 +36,8 @@ export function WorklogList({
   isDeleting,
   getTaskLabel,
 }: WorklogListProps) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const currentUser = useAuthStore((s) => s.user);
   const [editing, setEditing] = useState<WorklogRead | null>(null);
   const [deleting, setDeleting] = useState<WorklogRead | null>(null);
@@ -46,7 +50,7 @@ export function WorklogList({
   }
 
   if (worklogs.length === 0) {
-    return <p className="py-4 text-sm text-jira-textSub">No hours logged yet.</p>;
+    return <p className="py-4 text-sm text-jira-textSub">{t("worklogs.noHoursYet")}</p>;
   }
 
   return (
@@ -55,11 +59,11 @@ export function WorklogList({
         <table className="min-w-full divide-y divide-jira-border text-sm">
           <thead>
             <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
-              {getTaskLabel && <th className="py-1.5 pr-3">Task</th>}
-              <th className="py-1.5 pr-3">Date</th>
-              <th className="py-1.5 pr-3">User</th>
-              <th className="py-1.5 pr-3">Hours</th>
-              <th className="py-1.5 pr-3">Description</th>
+              {getTaskLabel && <th className="py-1.5 pr-3">{t("worklogs.task")}</th>}
+              <th className="py-1.5 pr-3">{t("common.date")}</th>
+              <th className="py-1.5 pr-3">{t("worklogs.user")}</th>
+              <th className="py-1.5 pr-3">{t("worklogs.hours")}</th>
+              <th className="py-1.5 pr-3">{t("common.description")}</th>
               <th className="py-1.5 pr-3" />
             </tr>
           </thead>
@@ -71,10 +75,10 @@ export function WorklogList({
                     {getTaskLabel(w)}
                   </td>
                 )}
-                <td className="py-1.5 pr-3 whitespace-nowrap text-jira-text">{w.work_date}</td>
+                <td className="py-1.5 pr-3 whitespace-nowrap text-jira-text">{formatDate(w.work_date)}</td>
                 <td className="py-1.5 pr-3 whitespace-nowrap text-jira-text">
                   {w.user_id === currentUser?.id
-                    ? "You"
+                    ? t("worklogs.you")
                     : (userNameById.get(w.user_id) ?? w.user_id.slice(0, 8))}
                 </td>
                 <td className="py-1.5 pr-3 text-jira-text">{w.hours}</td>
@@ -82,11 +86,16 @@ export function WorklogList({
                 <td className="py-1.5 pr-3 text-right">
                   {canManage(w) && (
                     <div className="flex justify-end gap-1">
-                      <IconButton icon={Pencil} size="sm" aria-label="Edit worklog" onClick={() => setEditing(w)} />
+                      <IconButton
+                        icon={Pencil}
+                        size="sm"
+                        aria-label={t("worklogs.editWorklog")}
+                        onClick={() => setEditing(w)}
+                      />
                       <IconButton
                         icon={Trash2}
                         size="sm"
-                        aria-label="Delete worklog"
+                        aria-label={t("worklogs.deleteWorklog")}
                         className="hover:bg-jira-red/10 hover:text-jira-red"
                         onClick={() => setDeleting(w)}
                       />
@@ -100,7 +109,7 @@ export function WorklogList({
       </div>
 
       {editing && (
-        <Modal title="Edit worklog" onClose={() => setEditing(null)}>
+        <Modal title={t("worklogs.editWorklog")} onClose={() => setEditing(null)}>
           <WorklogForm
             initial={editing}
             isPending={isUpdating}
@@ -128,9 +137,12 @@ export function WorklogList({
 
       {deleting && (
         <ConfirmDialog
-          title="Delete worklog"
-          message={`Delete the ${deleting.hours}h entry on ${deleting.work_date}? This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t("worklogs.deleteWorklog")}
+          message={t("worklogs.deleteWorklogMessage", {
+            hours: deleting.hours,
+            date: formatDate(deleting.work_date),
+          })}
+          confirmLabel={t("common.delete")}
           busy={isDeleting}
           onCancel={() => setDeleting(null)}
           onConfirm={() => {

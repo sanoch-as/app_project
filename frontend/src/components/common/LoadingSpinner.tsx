@@ -1,4 +1,7 @@
-export function LoadingSpinner({ label = "Loading…" }: { label?: string }) {
+import { useTranslation } from "react-i18next";
+
+export function LoadingSpinner({ label }: { label?: string }) {
+  const { t } = useTranslation();
   return (
     <div className="flex items-center justify-center gap-2 py-10 text-sm text-jira-textSub">
       <svg
@@ -14,7 +17,7 @@ export function LoadingSpinner({ label = "Loading…" }: { label?: string }) {
           d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"
         />
       </svg>
-      <span>{label}</span>
+      <span>{label ?? t("common.loading")}</span>
     </div>
   );
 }

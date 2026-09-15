@@ -13,6 +13,11 @@ from app.schemas.user import UserInvite, UserRead, UserUpdate
 
 router = APIRouter(prefix="/users", tags=["users"])
 
+# Fields a non-admin may change on their own profile without an admin role —
+# personal preferences, not organization-administrative data (role/cost_per_hour/
+# is_active stay admin-only).
+SELF_EDITABLE_FIELDS = {"full_name", "language", "date_format"}
+
 
 @router.get("", response_model=Page[UserRead])
 async def list_users(
@@ -59,8 +64,9 @@ async def update_user(
 
     update_fields = payload.model_dump(exclude_unset=True)
     if not is_admin:
-        # Members may only change their own display name (see the permission matrix, section 8).
-        disallowed = set(update_fields) - {"full_name"}
+        # Members may only change their own profile preferences (see the permission
+        # matrix, section 8, amended for personal settings — language/date_format).
+        disallowed = set(update_fields) - SELF_EDITABLE_FIELDS
         if disallowed:
             raise ForbiddenError(f"Members cannot update: {', '.join(sorted(disallowed))}")
 

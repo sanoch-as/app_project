@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
 import { useWorklogsReport } from "@/hooks/useWorklogs";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Button } from "@/components/common/Button";
@@ -10,6 +12,8 @@ import { downloadProjectExport } from "@/api/reportsExport";
 import { getApiErrorMessage } from "@/api/client";
 
 export function WorklogsReportPage() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const { data: projects } = useProjects({ limit: 100 });
   const { data: users } = useUsers({ limit: 100 });
 
@@ -50,16 +54,14 @@ export function WorklogsReportPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-jira-text">Worklogs report</h1>
-      <p className="mb-6 text-sm text-jira-textSub">
-        Hours logged across projects, filterable by project, user and date range.
-      </p>
+      <h1 className="mb-1 text-xl font-semibold text-jira-text">{t("worklogsReport.title")}</h1>
+      <p className="mb-6 text-sm text-jira-textSub">{t("worklogsReport.subtitle")}</p>
 
       <div className="card mb-4 grid grid-cols-1 gap-3 p-4 sm:grid-cols-4">
         <div>
-          <label className="label">Project</label>
+          <label className="label">{t("worklogsReport.project")}</label>
           <select className="input" value={projectId} onChange={(e) => setProjectId(e.target.value)}>
-            <option value="">All projects</option>
+            <option value="">{t("worklogsReport.allProjects")}</option>
             {(projects?.items ?? []).map((p) => (
               <option key={p.id} value={p.id}>
                 {p.name}
@@ -68,9 +70,9 @@ export function WorklogsReportPage() {
           </select>
         </div>
         <div>
-          <label className="label">User</label>
+          <label className="label">{t("worklogsReport.user")}</label>
           <select className="input" value={userId} onChange={(e) => setUserId(e.target.value)}>
-            <option value="">All users</option>
+            <option value="">{t("worklogsReport.allUsers")}</option>
             {(users?.items ?? []).map((u) => (
               <option key={u.id} value={u.id}>
                 {u.full_name}
@@ -79,18 +81,20 @@ export function WorklogsReportPage() {
           </select>
         </div>
         <div>
-          <label className="label">From</label>
+          <label className="label">{t("worklogsReport.from")}</label>
           <input type="date" className="input" value={from} onChange={(e) => setFrom(e.target.value)} />
         </div>
         <div>
-          <label className="label">To</label>
+          <label className="label">{t("worklogsReport.to")}</label>
           <input type="date" className="input" value={to} onChange={(e) => setTo(e.target.value)} />
         </div>
       </div>
 
       <div className="mb-3 flex items-center justify-between">
         <div className="text-sm text-jira-textSub">
-          {data ? `${data.total} entr${data.total === 1 ? "y" : "ies"} · ${totalHours.toFixed(2)}h total` : ""}
+          {data
+            ? t("worklogsReport.entriesTotal", { count: data.total, hours: totalHours.toFixed(2) })
+            : ""}
         </div>
         <div className="flex items-center gap-2">
           {exportError && <ErrorMessage error={exportError} />}
@@ -98,10 +102,10 @@ export function WorklogsReportPage() {
             variant="secondary"
             iconLeft={Download}
             disabled={!projectId || exporting}
-            title={!projectId ? "Select a single project to export its worklogs as CSV" : undefined}
+            title={!projectId ? t("worklogsReport.selectProjectToExport") : undefined}
             onClick={handleExport}
           >
-            {exporting ? "Exporting…" : "Export CSV (selected project)"}
+            {exporting ? t("worklogsReport.exporting") : t("worklogsReport.exportCsv")}
           </Button>
         </div>
       </div>
@@ -114,16 +118,16 @@ export function WorklogsReportPage() {
           <table className="min-w-full divide-y divide-jira-border text-sm">
             <thead className="bg-jira-panel">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                <th className="px-3 py-2">Date</th>
-                <th className="px-3 py-2">User</th>
-                <th className="px-3 py-2">Hours</th>
-                <th className="px-3 py-2">Description</th>
+                <th className="px-3 py-2">{t("worklogsReport.date")}</th>
+                <th className="px-3 py-2">{t("worklogsReport.user")}</th>
+                <th className="px-3 py-2">{t("worklogsReport.hours")}</th>
+                <th className="px-3 py-2">{t("common.description")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-jira-borderSoft">
               {data.items.map((w) => (
                 <tr key={w.id} className="hover:bg-jira-hover">
-                  <td className="px-3 py-2 text-jira-text">{w.work_date}</td>
+                  <td className="px-3 py-2 text-jira-text">{formatDate(w.work_date)}</td>
                   <td className="px-3 py-2 text-jira-text">{userNameById.get(w.user_id) ?? w.user_id.slice(0, 8)}</td>
                   <td className="px-3 py-2 text-jira-text">{w.hours}</td>
                   <td className="px-3 py-2 text-jira-textSub">{w.description ?? "—"}</td>
@@ -132,7 +136,7 @@ export function WorklogsReportPage() {
               {data.items.length === 0 && (
                 <tr>
                   <td colSpan={4} className="px-3 py-8 text-center text-jira-textSub">
-                    No worklogs match these filters.
+                    {t("worklogsReport.noWorklogsMatch")}
                   </td>
                 </tr>
               )}

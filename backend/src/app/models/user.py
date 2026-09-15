@@ -7,7 +7,7 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
-from app.core.enums import UserRole
+from app.core.enums import DateFormat, Language, UserRole
 from app.models.mixins import TimestampMixin, UUIDPKMixin
 
 if TYPE_CHECKING:
@@ -30,6 +30,12 @@ class User(UUIDPKMixin, TimestampMixin, Base):
     cost_per_hour: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     is_active: Mapped[bool] = mapped_column(
         Boolean, default=True, server_default="true", nullable=False
+    )
+    language: Mapped[Language] = mapped_column(
+        default=Language.ES, server_default=Language.ES.value, nullable=False
+    )
+    date_format: Mapped[DateFormat] = mapped_column(
+        default=DateFormat.DMY, server_default=DateFormat.DMY.value, nullable=False
     )
 
     # DB-backed login rate limiting (no Redis in v1 — see ADR-004 in docs/DECISIONS.md).

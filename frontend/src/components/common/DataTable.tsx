@@ -1,5 +1,6 @@
 import { flexRender, type Table } from "@tanstack/react-table";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 
 interface DataTableProps<TData> {
   table: Table<TData>;
@@ -11,7 +12,8 @@ interface DataTableProps<TData> {
  * Thin wrapper around the <table>/<thead>/<tbody> skeleton every TanStack
  * Table consumer in this app renders by hand — styling only, no behavior.
  */
-export function DataTable<TData>({ table, emptyMessage = "No results.", className }: DataTableProps<TData>) {
+export function DataTable<TData>({ table, emptyMessage, className }: DataTableProps<TData>) {
+  const { t } = useTranslation();
   const columnCount = table.getAllLeafColumns().length;
   const rows = table.getRowModel().rows;
 
@@ -55,7 +57,7 @@ export function DataTable<TData>({ table, emptyMessage = "No results.", classNam
           {rows.length === 0 && (
             <tr>
               <td colSpan={columnCount} className="px-3 py-8 text-center text-jira-textSub">
-                {emptyMessage}
+                {emptyMessage ?? t("common.noResults")}
               </td>
             </tr>
           )}

@@ -6,6 +6,16 @@ class UserRole(enum.StrEnum):
     MEMBER = "member"
 
 
+class Language(enum.StrEnum):
+    ES = "es"
+    EN = "en"
+
+
+class DateFormat(enum.StrEnum):
+    ISO = "iso"
+    DMY = "dmy"
+
+
 class ProjectStatus(enum.StrEnum):
     PLANNING = "planning"
     ACTIVE = "active"

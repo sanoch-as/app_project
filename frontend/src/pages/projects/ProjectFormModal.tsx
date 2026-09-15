@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useCreateProject, useUpdateProject } from "@/hooks/useProjects";
@@ -20,6 +21,7 @@ function parseHolidays(text: string): string[] {
 }
 
 export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModalProps) {
+  const { t } = useTranslation();
   const createProject = useCreateProject();
   const updateProject = useUpdateProject(initial?.id ?? "");
 
@@ -59,11 +61,15 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
   }
 
   return (
-    <Modal title={initial ? "Edit project" : "New project"} onClose={onClose} widthClassName="max-w-xl">
+    <Modal
+      title={initial ? t("projects.form.editTitle") : t("projects.form.newTitle")}
+      onClose={onClose}
+      widthClassName="max-w-xl"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label" htmlFor="project_name">
-            Name
+            {t("common.name")}
           </label>
           <input
             id="project_name"
@@ -75,7 +81,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
         </div>
         <div>
           <label className="label" htmlFor="project_description">
-            Description
+            {t("common.description")}
           </label>
           <textarea
             id="project_description"
@@ -89,7 +95,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
         {initial && (
           <div>
             <label className="label" htmlFor="project_status">
-              Status
+              {t("common.status")}
             </label>
             <select
               id="project_status"
@@ -99,7 +105,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
             >
               {STATUSES.map((s) => (
                 <option key={s} value={s}>
-                  {s.replace("_", " ")}
+                  {t(`enums.projectStatus.${s}`)}
                 </option>
               ))}
             </select>
@@ -109,7 +115,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="start_date">
-              Start date
+              {t("common.startDate")}
             </label>
             <input
               id="start_date"
@@ -121,7 +127,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
           </div>
           <div>
             <label className="label" htmlFor="end_date">
-              End date
+              {t("common.endDate")}
             </label>
             <input
               id="end_date"
@@ -136,7 +142,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="working_days_per_week">
-              Working days / week
+              {t("projects.form.workingDaysPerWeek")}
             </label>
             <input
               id="working_days_per_week"
@@ -147,13 +153,11 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
               value={workingDaysPerWeek}
               onChange={(e) => setWorkingDaysPerWeek(Number(e.target.value))}
             />
-            <p className="mt-1 text-xs text-jira-textSub">
-              5 = Mon–Fri, 6 = Mon–Sat, 7 = every day (ADR-012).
-            </p>
+            <p className="mt-1 text-xs text-jira-textSub">{t("projects.form.workingDaysHint")}</p>
           </div>
           <div>
             <label className="label" htmlFor="standard_hours_per_day">
-              Standard hours / day
+              {t("projects.form.standardHoursPerDay")}
             </label>
             <input
               id="standard_hours_per_day"
@@ -170,7 +174,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
 
         <div>
           <label className="label" htmlFor="holidays">
-            Holidays (comma-separated ISO dates)
+            {t("projects.form.holidays")}
           </label>
           <input
             id="holidays"
@@ -185,10 +189,14 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
 
         <div className="flex justify-end gap-2 border-t border-jira-borderSoft pt-3">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={mutation.isPending}>
-            {mutation.isPending ? "Saving…" : initial ? "Save changes" : "Create project"}
+            {mutation.isPending
+              ? t("common.saving")
+              : initial
+                ? t("common.saveChanges")
+                : t("projects.form.createProject")}
           </button>
         </div>
       </form>

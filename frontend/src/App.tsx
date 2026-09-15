@@ -18,6 +18,7 @@ import { ProjectMembersTab } from "@/pages/projects/ProjectMembersTab";
 import { ProjectReportsTab } from "@/pages/projects/ProjectReportsTab";
 import { WorklogsReportPage } from "@/pages/reports/WorklogsReportPage";
 import { UsersSettingsPage } from "@/pages/settings/UsersSettingsPage";
+import { PreferencesSettingsPage } from "@/pages/settings/PreferencesSettingsPage";
 
 export default function App() {
   return (
@@ -50,6 +51,7 @@ export default function App() {
         </Route>
         <Route path="/reports" element={<WorklogsReportPage />} />
         <Route path="/settings/users" element={<UsersSettingsPage />} />
+        <Route path="/settings/preferences" element={<PreferencesSettingsPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

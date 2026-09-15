@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Gantt, { type GanttTask, type GanttViewMode } from "frappe-gantt";
+import { useTranslation } from "react-i18next";
 // frappe-gantt's package "main" (src/index.js) imports its own gantt.scss
 // alongside the class export, so no separate stylesheet import is needed
 // here — just our overrides layered on top (ADR-008/ADR-021).
 import "@/components/gantt/gantt-overrides.css";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import type { DependencyRead, TaskRead } from "@/types/api";
 
 interface GanttChartProps {
@@ -15,11 +17,7 @@ interface GanttChartProps {
   onTaskClick: (taskId: string) => void;
 }
 
-const VIEW_MODES: { value: GanttViewMode; label: string }[] = [
-  { value: "Day", label: "Day" },
-  { value: "Week", label: "Week" },
-  { value: "Month", label: "Month" },
-];
+const VIEW_MODE_VALUES: ("Day" | "Week" | "Month")[] = ["Day", "Week", "Month"];
 
 function toIsoDate(date: Date): string {
   const y = date.getFullYear();
@@ -35,9 +33,17 @@ function inclusiveDaySpan(start: Date, end: Date): number {
 }
 
 export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: GanttChartProps) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const ganttRef = useRef<Gantt | null>(null);
   const [viewMode, setViewMode] = useState<GanttViewMode>("Week");
+
+  const VIEW_MODE_LABELS: Record<"Day" | "Week" | "Month", string> = {
+    Day: t("gantt.day"),
+    Week: t("gantt.week"),
+    Month: t("gantt.month"),
+  };
 
   // Latest-ref pattern: the Gantt instance is created once (or once per
   // empty->non-empty transition) and its option callbacks close over these
@@ -47,6 +53,10 @@ export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: G
   onDateChangeRef.current = onDateChange;
   const onTaskClickRef = useRef(onTaskClick);
   onTaskClickRef.current = onTaskClick;
+  const tRef = useRef(t);
+  tRef.current = t;
+  const formatDateRef = useRef(formatDate);
+  formatDateRef.current = formatDate;
 
   const predecessorsByTask = useMemo(() => {
     const map = new Map<string, string[]>();
@@ -114,14 +124,18 @@ export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: G
         custom_popup_html: (task) => {
           const original = taskById.get(task.id);
           if (!original) return "";
+          const translate = tRef.current;
           const floatText =
-            original.total_float === null ? "n/a" : `${original.total_float}d float`;
+            original.total_float === null
+              ? translate("common.notApplicable")
+              : translate("gantt.floatDays", { days: original.total_float });
+          const fmt = formatDateRef.current;
           return `
             <div class="gantt-popup">
               <h5>${original.wbs_code} ${original.name}</h5>
-              <p>${original.start_date} → ${original.end_date}</p>
-              <p>${original.percent_complete}% complete · ${floatText}${
-                original.is_critical ? " · <strong>critical</strong>" : ""
+              <p>${fmt(original.start_date)} → ${fmt(original.end_date)}</p>
+              <p>${translate("gantt.percentCompletePopup", { percent: original.percent_complete })} · ${floatText}${
+                original.is_critical ? ` · <strong>${translate("gantt.critical")}</strong>` : ""
               }</p>
             </div>`;
         },
@@ -140,36 +154,34 @@ export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: G
     <div className="gantt-chart-container">
       <div className="mb-3 flex items-center justify-between">
         <div className="flex gap-1 rounded-md border border-jira-border bg-white p-0.5">
-          {VIEW_MODES.map((mode) => (
+          {VIEW_MODE_VALUES.map((mode) => (
             <button
-              key={mode.value}
+              key={mode}
               type="button"
-              onClick={() => setViewMode(mode.value)}
+              onClick={() => setViewMode(mode)}
               className={`rounded px-2.5 py-1 text-xs font-medium ${
-                viewMode === mode.value
+                viewMode === mode
                   ? "bg-brand-600 text-white"
                   : "text-jira-textSub hover:bg-jira-hover"
               }`}
             >
-              {mode.label}
+              {VIEW_MODE_LABELS[mode]}
             </button>
           ))}
         </div>
         <div className="flex items-center gap-3 text-xs text-jira-textSub">
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-jira-red/20 ring-1 ring-jira-red" />
-            Critical path
+            {t("gantt.criticalPath")}
           </span>
           <span className="flex items-center gap-1">
             <span className="inline-block h-2.5 w-2.5 rounded-sm bg-jira-orange/20 ring-1 ring-jira-orange" />
-            Milestone
+            {t("gantt.milestone")}
           </span>
         </div>
       </div>
       {tasks.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-jira-textSub">
-          No tasks yet. Create a task to see it on the Gantt chart.
-        </div>
+        <div className="card p-8 text-center text-sm text-jira-textSub">{t("gantt.noTasksYet")}</div>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-jira-border bg-white p-2">
           <div ref={containerRef} />

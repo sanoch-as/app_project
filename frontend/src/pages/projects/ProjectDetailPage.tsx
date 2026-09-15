@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet, useParams } from "react-router-dom";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 import {
   Calendar,
   CalendarClock,
@@ -21,27 +22,30 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ProjectStatusBadge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
-
-const TABS = [
-  { to: "overview", label: "Overview", icon: LayoutDashboard },
-  { to: "gantt", label: "Gantt", icon: GanttChartSquare },
-  { to: "tasks", label: "Tasks", icon: ListChecks },
-  { to: "kanban", label: "Kanban", icon: KanbanSquare },
-  { to: "calendar", label: "Calendar", icon: Calendar },
-  { to: "baselines", label: "Baselines", icon: Milestone },
-  { to: "forecast", label: "Forecast", icon: CalendarClock },
-  { to: "worklogs", label: "Worklogs", icon: Clock },
-  { to: "members", label: "Members", icon: Users },
-  { to: "reports", label: "Reports", icon: FileBarChart2 },
-];
+import { useDateFormat } from "@/hooks/useDateFormat";
 
 export function ProjectDetailPage() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading, error } = useProject(projectId);
   const role = useAuthStore((s) => s.user?.role);
   const [editing, setEditing] = useState(false);
 
-  if (isLoading) return <LoadingSpinner label="Loading project…" />;
+  const TABS = [
+    { to: "overview", label: t("projects.tabs.overview"), icon: LayoutDashboard },
+    { to: "gantt", label: t("projects.tabs.gantt"), icon: GanttChartSquare },
+    { to: "tasks", label: t("projects.tabs.tasks"), icon: ListChecks },
+    { to: "kanban", label: t("projects.tabs.kanban"), icon: KanbanSquare },
+    { to: "calendar", label: t("projects.tabs.calendar"), icon: Calendar },
+    { to: "baselines", label: t("projects.tabs.baselines"), icon: Milestone },
+    { to: "forecast", label: t("projects.tabs.forecast"), icon: CalendarClock },
+    { to: "worklogs", label: t("projects.tabs.worklogs"), icon: Clock },
+    { to: "members", label: t("projects.tabs.members"), icon: Users },
+    { to: "reports", label: t("projects.tabs.reports"), icon: FileBarChart2 },
+  ];
+
+  if (isLoading) return <LoadingSpinner label={t("projects.detail.loading")} />;
   if (error) return <ErrorMessage error={error} />;
   if (!project) return null;
 
@@ -57,12 +61,13 @@ export function ProjectDetailPage() {
             <p className="mt-1 max-w-2xl text-sm text-jira-textSub">{project.description}</p>
           )}
           <p className="mt-1 text-xs text-jira-textSub">
-            {project.start_date ?? "no start date"} → {project.end_date ?? "no end date"}
+            {project.start_date ? formatDate(project.start_date) : t("projects.detail.noStartDate")}{" "}
+            → {project.end_date ? formatDate(project.end_date) : t("projects.detail.noEndDate")}
           </p>
         </div>
         {role === "admin" && (
           <Button variant="secondary" iconLeft={Pencil} onClick={() => setEditing(true)}>
-            Edit project
+            {t("projects.detail.editProject")}
           </Button>
         )}
       </div>

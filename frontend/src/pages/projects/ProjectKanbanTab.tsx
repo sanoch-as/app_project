@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
@@ -8,6 +9,7 @@ import { KanbanBoard } from "@/components/kanban/KanbanBoard";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 
 export function ProjectKanbanTab() {
+  const { t } = useTranslation();
   const { project } = useProjectDetailContext();
   const { data, isLoading, error } = useGantt(project.id);
   const { data: members } = useProjectMembers(project.id);
@@ -16,7 +18,7 @@ export function ProjectKanbanTab() {
 
   const memberUsers = useMemo(() => (members ?? []).map((m) => m.user), [members]);
 
-  if (isLoading) return <LoadingSpinner label="Loading tasks…" />;
+  if (isLoading) return <LoadingSpinner label={t("kanban.loadingTasks")} />;
   if (error) return <ErrorMessage error={error} />;
   if (!data) return null;
 

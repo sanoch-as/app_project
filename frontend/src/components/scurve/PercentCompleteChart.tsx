@@ -8,33 +8,31 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { useTranslation } from "react-i18next";
 import { chartColors } from "@/styles/chartColors";
 import type { PercentCompleteSeriesPointRead } from "@/types/api";
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "short" });
-
-function formatCheckpoint(checkpoint: string): string {
-  return dateFormatter.format(new Date(`${checkpoint}T00:00:00`));
-}
-
 export function PercentCompleteChart({ points }: { points: PercentCompleteSeriesPointRead[] }) {
+  const { t, i18n } = useTranslation();
+  const dateFormatter = new Intl.DateTimeFormat(i18n.language, { day: "numeric", month: "short" });
+
   if (points.length === 0) {
     return (
       <div className="card flex h-72 items-center justify-center text-sm text-jira-textSub">
-        No data for this range yet.
+        {t("forecast.noDataForRange")}
       </div>
     );
   }
 
   const data = points.map((p) => ({
-    checkpoint: formatCheckpoint(p.checkpoint),
+    checkpoint: dateFormatter.format(new Date(`${p.checkpoint}T00:00:00`)),
     planned: p.planned_percent_complete,
     actual: p.actual_percent_complete,
   }));
 
   return (
     <div className="card p-4">
-      <h3 className="mb-2 text-sm font-semibold text-jira-text">Planned vs. Real — % complete over time</h3>
+      <h3 className="mb-2 text-sm font-semibold text-jira-text">{t("forecast.chartTitle")}</h3>
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} />
@@ -55,7 +53,7 @@ export function PercentCompleteChart({ points }: { points: PercentCompleteSeries
           <Line
             type="monotone"
             dataKey="planned"
-            name="Planned %"
+            name={t("forecast.plannedSeries")}
             stroke={chartColors.blueDark}
             dot={{ r: 3 }}
             strokeWidth={2}
@@ -64,7 +62,7 @@ export function PercentCompleteChart({ points }: { points: PercentCompleteSeries
           <Line
             type="monotone"
             dataKey="actual"
-            name="Real %"
+            name={t("forecast.actualSeries")}
             stroke={chartColors.orange}
             dot={{ r: 3 }}
             strokeWidth={2}

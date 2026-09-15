@@ -1,4 +1,5 @@
 import { useMemo, useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
@@ -21,6 +22,7 @@ interface AssigneeRow {
 }
 
 export function TaskFormModal({ projectId, initial, allTasks, members, onClose }: TaskFormModalProps) {
+  const { t } = useTranslation();
   const createTask = useCreateTask(projectId);
   const updateTask = useUpdateTask(projectId);
 
@@ -101,11 +103,19 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
   }
 
   return (
-    <Modal title={initial ? `Edit task — ${initial.wbs_code}` : "New task"} onClose={onClose} widthClassName="max-w-2xl">
+    <Modal
+      title={
+        initial
+          ? t("tasks.form.editTitle", { wbs: initial.wbs_code })
+          : t("tasks.form.newTitle")
+      }
+      onClose={onClose}
+      widthClassName="max-w-2xl"
+    >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label" htmlFor="task_name">
-            Name
+            {t("common.name")}
           </label>
           <input
             id="task_name"
@@ -118,7 +128,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
 
         <div>
           <label className="label" htmlFor="task_description">
-            Description
+            {t("common.description")}
           </label>
           <textarea
             id="task_description"
@@ -132,7 +142,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
         {!initial && (
           <div>
             <label className="label" htmlFor="parent_task">
-              WBS parent
+              {t("tasks.form.wbsParent")}
             </label>
             <select
               id="parent_task"
@@ -140,10 +150,10 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
               value={parentTaskId}
               onChange={(e) => setParentTaskId(e.target.value)}
             >
-              <option value="">(top level)</option>
-              {parentOptions.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.wbs_code} — {t.name}
+              <option value="">{t("tasks.form.topLevel")}</option>
+              {parentOptions.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.wbs_code} — {task.name}
                 </option>
               ))}
             </select>
@@ -153,7 +163,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="label" htmlFor="start_date">
-              Start date
+              {t("common.startDate")}
             </label>
             <input
               id="start_date"
@@ -166,7 +176,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
           </div>
           <div>
             <label className="label" htmlFor="duration_days">
-              Duration (working days)
+              {t("tasks.form.durationDays")}
             </label>
             <input
               id="duration_days"
@@ -180,10 +190,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
             />
           </div>
         </div>
-        <p className="-mt-2 text-xs text-jira-textSub">
-          End date is computed by the server from start date + duration using the project's
-          working calendar — it is never entered directly.
-        </p>
+        <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.endDateHint")}</p>
 
         <label className="flex items-center gap-2 text-sm text-jira-text">
           <input
@@ -191,13 +198,13 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
             checked={isMilestone}
             onChange={(e) => setIsMilestone(e.target.checked)}
           />
-          This is a milestone (0-duration marker)
+          {t("tasks.form.isMilestone")}
         </label>
 
         <div className="grid grid-cols-3 gap-3">
           <div>
             <label className="label" htmlFor="priority">
-              Priority
+              {t("tasks.table.priority")}
             </label>
             <select
               id="priority"
@@ -207,14 +214,14 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
             >
               {PRIORITIES.map((p) => (
                 <option key={p} value={p}>
-                  {p}
+                  {t(`enums.taskPriority.${p}`)}
                 </option>
               ))}
             </select>
           </div>
           <div>
             <label className="label" htmlFor="estimated_hours">
-              Estimated hours
+              {t("tasks.form.estimatedHours")}
             </label>
             <input
               id="estimated_hours"
@@ -228,7 +235,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
           </div>
           <div>
             <label className="label" htmlFor="budgeted_cost">
-              Budgeted cost
+              {t("tasks.form.budgetedCost")}
             </label>
             <input
               id="budgeted_cost"
@@ -243,11 +250,9 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
         </div>
 
         <div>
-          <span className="label">Assignees</span>
+          <span className="label">{t("tasks.form.assignees")}</span>
           {members.length === 0 ? (
-            <p className="text-sm text-jira-textSub">
-              No members on this project yet — add some in the Members tab.
-            </p>
+            <p className="text-sm text-jira-textSub">{t("tasks.form.noMembersYet")}</p>
           ) : (
             <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-jira-border p-2">
               {assignees.map((row) => {
@@ -284,10 +289,14 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
 
         <div className="flex justify-end gap-2 border-t border-jira-borderSoft pt-3">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={isPending}>
-            {isPending ? "Saving…" : initial ? "Save changes" : "Create task"}
+            {isPending
+              ? t("common.saving")
+              : initial
+                ? t("common.saveChanges")
+                : t("tasks.form.createTask")}
           </button>
         </div>
       </form>

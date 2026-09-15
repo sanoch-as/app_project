@@ -1,4 +1,5 @@
 import { Check, ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { TaskStatus } from "@/types/api";
 import { Pill } from "@/components/common/Badge";
 import { Dropdown, DropdownItem } from "@/components/common/Dropdown";
@@ -19,6 +20,7 @@ interface StatusDropdownBadgeProps {
 }
 
 export function StatusDropdownBadge({ status, onChange, disabled }: StatusDropdownBadgeProps) {
+  const { t } = useTranslation();
   return (
     <Dropdown
       trigger={({ toggle }) => (
@@ -29,7 +31,7 @@ export function StatusDropdownBadge({ status, onChange, disabled }: StatusDropdo
           className="disabled:cursor-not-allowed disabled:opacity-50"
         >
           <Pill tone={STATUS_TONE[status]}>
-            {status.replace("_", " ")}
+            {t(`enums.taskStatus.${status}`)}
             <ChevronDown className="h-3 w-3" aria-hidden="true" />
           </Pill>
         </button>
@@ -45,7 +47,7 @@ export function StatusDropdownBadge({ status, onChange, disabled }: StatusDropdo
                 close();
               }}
             >
-              <span className="flex-1 capitalize">{option.replace("_", " ")}</span>
+              <span className="flex-1">{t(`enums.taskStatus.${option}`)}</span>
               {option === status && <Check className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />}
             </DropdownItem>
           ))}

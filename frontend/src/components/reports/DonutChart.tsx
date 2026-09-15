@@ -1,4 +1,5 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { useTranslation } from "react-i18next";
 import { chartSeriesPalette } from "@/styles/chartColors";
 
 export interface DonutDatum {
@@ -14,6 +15,7 @@ interface DonutChartProps {
 }
 
 export function DonutChart({ title, data, size = 150 }: DonutChartProps) {
+  const { t } = useTranslation();
   const total = data.reduce((sum, d) => sum + d.value, 0);
   const nonEmpty = data.filter((d) => d.value > 0);
 
@@ -23,7 +25,7 @@ export function DonutChart({ title, data, size = 150 }: DonutChartProps) {
       <div className="relative mx-auto" style={{ width: size, height: size }}>
         {nonEmpty.length === 0 ? (
           <div className="flex h-full items-center justify-center text-xs text-jira-textSub">
-            No data
+            {t("reports.noData")}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
@@ -48,7 +50,7 @@ export function DonutChart({ title, data, size = 150 }: DonutChartProps) {
         )}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
           <span className="text-2xl font-bold text-jira-text">{total}</span>
-          <span className="text-xs text-jira-textSub">Total</span>
+          <span className="text-xs text-jira-textSub">{t("reports.total")}</span>
         </div>
       </div>
       <div className="mt-3 flex flex-wrap justify-center gap-x-3.5 gap-y-1.5">

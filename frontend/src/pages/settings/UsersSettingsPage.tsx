@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { UserPlus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useInviteUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -18,6 +19,7 @@ export function UsersSettingsPage() {
 }
 
 function UsersSettingsContent() {
+  const { t } = useTranslation();
   const { data, isLoading, error } = useUsers({ limit: 100 });
   const updateUser = useUpdateUser();
   const [showInvite, setShowInvite] = useState(false);
@@ -27,11 +29,11 @@ function UsersSettingsContent() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-jira-text">Organization users</h1>
-          <p className="text-sm text-jira-textSub">Manage users, roles and hourly cost rates.</p>
+          <h1 className="text-xl font-semibold text-jira-text">{t("usersSettings.title")}</h1>
+          <p className="text-sm text-jira-textSub">{t("usersSettings.subtitle")}</p>
         </div>
         <Button variant="primary" iconLeft={UserPlus} onClick={() => setShowInvite(true)}>
-          Invite user
+          {t("usersSettings.inviteUser")}
         </Button>
       </div>
 
@@ -43,11 +45,11 @@ function UsersSettingsContent() {
           <table className="min-w-full divide-y divide-jira-border text-sm">
             <thead className="bg-jira-panel">
               <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                <th className="px-4 py-2">Name</th>
-                <th className="px-4 py-2">Email</th>
-                <th className="px-4 py-2">Role</th>
-                <th className="px-4 py-2">Cost / hour</th>
-                <th className="px-4 py-2">Active</th>
+                <th className="px-4 py-2">{t("common.name")}</th>
+                <th className="px-4 py-2">{t("usersSettings.email")}</th>
+                <th className="px-4 py-2">{t("usersSettings.role")}</th>
+                <th className="px-4 py-2">{t("usersSettings.costPerHour")}</th>
+                <th className="px-4 py-2">{t("usersSettings.active")}</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -61,16 +63,18 @@ function UsersSettingsContent() {
                     </div>
                   </td>
                   <td className="px-4 py-2 text-jira-textSub">{u.email}</td>
-                  <td className="px-4 py-2 capitalize text-jira-text">{u.role}</td>
+                  <td className="px-4 py-2 text-jira-text">{t(`enums.userRole.${u.role}`)}</td>
                   <td className="px-4 py-2 text-jira-text">{u.cost_per_hour ?? "—"}</td>
-                  <td className="px-4 py-2 text-jira-text">{u.is_active ? "Yes" : "No"}</td>
+                  <td className="px-4 py-2 text-jira-text">
+                    {u.is_active ? t("usersSettings.yes") : t("usersSettings.no")}
+                  </td>
                   <td className="px-4 py-2 text-right">
                     <button
                       type="button"
                       className="text-xs font-medium text-brand-600 hover:underline"
                       onClick={() => setEditing(u)}
                     >
-                      Edit
+                      {t("common.edit")}
                     </button>
                   </td>
                 </tr>
@@ -97,6 +101,7 @@ function UsersSettingsContent() {
 }
 
 function InviteUserModal({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation();
   const inviteUser = useInviteUser();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -119,30 +124,27 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal title="Invite user" onClose={onClose}>
+    <Modal title={t("usersSettings.inviteTitle")} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <p className="text-xs text-jira-textSub">
-          There is no email delivery in v1 — this creates the account directly with the password
-          you set here; share it with the person out of band.
-        </p>
+        <p className="text-xs text-jira-textSub">{t("usersSettings.noEmailDeliveryHint")}</p>
         <div>
-          <label className="label">Full name</label>
+          <label className="label">{t("usersSettings.fullName")}</label>
           <input required className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
         <div>
-          <label className="label">Email</label>
+          <label className="label">{t("usersSettings.email")}</label>
           <input required type="email" className="input" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Role</label>
+            <label className="label">{t("usersSettings.role")}</label>
             <select className="input" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-              <option value="member">member</option>
-              <option value="admin">admin</option>
+              <option value="member">{t("enums.userRole.member")}</option>
+              <option value="admin">{t("enums.userRole.admin")}</option>
             </select>
           </div>
           <div>
-            <label className="label">Cost / hour (optional)</label>
+            <label className="label">{t("usersSettings.costPerHourOptional")}</label>
             <input
               type="number"
               min={0}
@@ -154,7 +156,7 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
           </div>
         </div>
         <div>
-          <label className="label">Temporary password</label>
+          <label className="label">{t("usersSettings.temporaryPassword")}</label>
           <input
             required
             minLength={8}
@@ -167,10 +169,10 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
         <ErrorMessage error={inviteUser.error} />
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={inviteUser.isPending}>
-            {inviteUser.isPending ? "Creating…" : "Create user"}
+            {inviteUser.isPending ? t("usersSettings.creating") : t("usersSettings.createUser")}
           </button>
         </div>
       </form>
@@ -191,6 +193,7 @@ function EditUserModal({
   isPending: boolean;
   error: unknown;
 }) {
+  const { t } = useTranslation();
   const [fullName, setFullName] = useState(user.full_name);
   const [role, setRole] = useState<UserRole>(user.role);
   const [costPerHour, setCostPerHour] = useState(user.cost_per_hour?.toString() ?? "");
@@ -207,22 +210,22 @@ function EditUserModal({
   }
 
   return (
-    <Modal title={`Edit ${user.email}`} onClose={onClose}>
+    <Modal title={t("usersSettings.editTitle", { email: user.email })} onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
         <div>
-          <label className="label">Full name</label>
+          <label className="label">{t("usersSettings.fullName")}</label>
           <input required className="input" value={fullName} onChange={(e) => setFullName(e.target.value)} />
         </div>
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label className="label">Role</label>
+            <label className="label">{t("usersSettings.role")}</label>
             <select className="input" value={role} onChange={(e) => setRole(e.target.value as UserRole)}>
-              <option value="member">member</option>
-              <option value="admin">admin</option>
+              <option value="member">{t("enums.userRole.member")}</option>
+              <option value="admin">{t("enums.userRole.admin")}</option>
             </select>
           </div>
           <div>
-            <label className="label">Cost / hour</label>
+            <label className="label">{t("usersSettings.costPerHour")}</label>
             <input
               type="number"
               min={0}
@@ -235,15 +238,15 @@ function EditUserModal({
         </div>
         <label className="flex items-center gap-2 text-sm text-jira-text">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
-          Active
+          {t("usersSettings.active")}
         </label>
         <ErrorMessage error={error} />
         <div className="flex justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>
-            Cancel
+            {t("common.cancel")}
           </button>
           <button type="submit" className="btn-primary" disabled={isPending}>
-            {isPending ? "Saving…" : "Save changes"}
+            {isPending ? t("common.saving") : t("common.saveChanges")}
           </button>
         </div>
       </form>

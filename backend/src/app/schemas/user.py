@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
-from app.core.enums import UserRole
+from app.core.enums import DateFormat, Language, UserRole
 
 
 class UserRead(BaseModel):
@@ -16,6 +16,8 @@ class UserRead(BaseModel):
     role: UserRole
     cost_per_hour: float | None
     is_active: bool
+    language: Language
+    date_format: DateFormat
     created_at: datetime
     updated_at: datetime
 
@@ -25,6 +27,8 @@ class UserUpdate(BaseModel):
     cost_per_hour: float | None = Field(default=None, ge=0, le=100_000)
     is_active: bool | None = None
     role: UserRole | None = None
+    language: Language | None = None
+    date_format: DateFormat | None = None
 
 
 class UserInvite(BaseModel):

@@ -1,36 +1,37 @@
 import { useState } from "react";
 import { Clock, Download, FileText, ListChecks, type LucideIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { downloadProjectExport } from "@/api/reportsExport";
 import { getApiErrorMessage } from "@/api/client";
 import { Button } from "@/components/common/Button";
 import type { ExportType } from "@/types/api";
 
-const EXPORTS: { type: ExportType; label: string; description: string; extension: string; icon: LucideIcon }[] = [
-  {
-    type: "tasks",
-    label: "Tasks (CSV)",
-    description: "Every task with WBS, dates, status, priority, cost and CPM fields.",
-    extension: "csv",
-    icon: ListChecks,
-  },
-  {
-    type: "worklogs",
-    label: "Worklogs (CSV)",
-    description: "Every logged hour on this project, with user, date and description.",
-    extension: "csv",
-    icon: Clock,
-  },
-  {
-    type: "summary",
-    label: "Project summary (PDF)",
-    description: "A one-page PDF with KPIs and S-curve numbers.",
-    extension: "pdf",
-    icon: FileText,
-  },
-];
-
 export function ProjectReportsTab() {
+  const { t } = useTranslation();
+  const EXPORTS: { type: ExportType; label: string; description: string; extension: string; icon: LucideIcon }[] = [
+    {
+      type: "tasks",
+      label: t("reports.tasksCsvLabel"),
+      description: t("reports.tasksCsvDescription"),
+      extension: "csv",
+      icon: ListChecks,
+    },
+    {
+      type: "worklogs",
+      label: t("reports.worklogsCsvLabel"),
+      description: t("reports.worklogsCsvDescription"),
+      extension: "csv",
+      icon: Clock,
+    },
+    {
+      type: "summary",
+      label: t("reports.summaryPdfLabel"),
+      description: t("reports.summaryPdfDescription"),
+      extension: "pdf",
+      icon: FileText,
+    },
+  ];
   const { project } = useProjectDetailContext();
   const [pending, setPending] = useState<ExportType | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +51,7 @@ export function ProjectReportsTab() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-jira-text">Export reports</h2>
+      <h2 className="text-sm font-semibold text-jira-text">{t("reports.exportReports")}</h2>
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-jira-red">
           {error}
@@ -73,7 +74,7 @@ export function ProjectReportsTab() {
               loading={pending === exp.type}
               onClick={() => handleDownload(exp.type, exp.extension)}
             >
-              {pending === exp.type ? "Downloading…" : "Download"}
+              {pending === exp.type ? t("reports.downloading") : t("reports.download")}
             </Button>
           </div>
         ))}

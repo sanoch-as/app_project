@@ -1,6 +1,7 @@
 import { useState, type DragEvent } from "react";
 import clsx from "clsx";
 import { Diamond } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { TaskRead, TaskStatus } from "@/types/api";
 import { PriorityBadge } from "@/components/common/Badge";
 import { Avatar } from "@/components/common/Avatar";
@@ -11,12 +12,7 @@ interface KanbanBoardProps {
   onTaskClick: (taskId: string) => void;
 }
 
-const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: "not_started", label: "Not started" },
-  { status: "in_progress", label: "In progress" },
-  { status: "blocked", label: "Blocked" },
-  { status: "completed", label: "Completed" },
-];
+const COLUMN_STATUSES: TaskStatus[] = ["not_started", "in_progress", "blocked", "completed"];
 
 /**
  * Native HTML5 drag-and-drop between columns (no DnD library — per the
@@ -25,6 +21,7 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
  * interfere with native `dragstart` hit-testing.
  */
 export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardProps) {
+  const { t } = useTranslation();
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
 
   function handleDragStart(e: DragEvent<HTMLDivElement>, taskId: string) {
@@ -44,27 +41,27 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-      {COLUMNS.map((column) => {
-        const columnTasks = tasks.filter((t) => t.status === column.status);
+      {COLUMN_STATUSES.map((status) => {
+        const columnTasks = tasks.filter((t) => t.status === status);
         return (
           <div
-            key={column.status}
+            key={status}
             onDragOver={(e) => {
               e.preventDefault();
-              setDragOverStatus(column.status);
+              setDragOverStatus(status);
             }}
-            onDragLeave={() => setDragOverStatus((s) => (s === column.status ? null : s))}
-            onDrop={(e) => handleDrop(e, column.status)}
+            onDragLeave={() => setDragOverStatus((s) => (s === status ? null : s))}
+            onDrop={(e) => handleDrop(e, status)}
             className={clsx(
               "min-h-[16rem] rounded-lg border p-2 transition-colors",
-              dragOverStatus === column.status
+              dragOverStatus === status
                 ? "border-brand-400 bg-jira-blueBadgeBg"
                 : "border-transparent bg-jira-panel",
             )}
           >
             <div className="mb-2 flex items-center justify-between px-1.5 py-1">
               <h3 className="text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                {column.label}
+                {t(`enums.taskStatus.${status}`)}
               </h3>
               <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-jira-textSub shadow-jira-sm">
                 {columnTasks.length}
@@ -86,7 +83,7 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
                     {task.is_milestone && (
                       <Diamond
                         className="mt-0.5 h-3 w-3 shrink-0 fill-jira-orange text-jira-orange"
-                        aria-label="Milestone"
+                        aria-label={t("tasks.table.milestone")}
                       />
                     )}
                     <span>{task.name}</span>
@@ -116,7 +113,7 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
               ))}
               {columnTasks.length === 0 && (
                 <div className="rounded border border-dashed border-jira-border p-4 text-center text-xs text-jira-textSub">
-                  Drop tasks here
+                  {t("kanban.dropTasksHere")}
                 </div>
               )}
             </div>

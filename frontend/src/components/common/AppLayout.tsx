@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 import {
   BarChart3,
   Bell,
@@ -12,7 +13,7 @@ import {
   PanelLeftOpen,
   Plus,
   Search,
-  Settings,
+  Settings as SettingsIcon,
   Users as UsersIcon,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
@@ -25,13 +26,8 @@ import { stringToColor } from "@/lib/color";
 import { Dropdown, DropdownItem } from "@/components/common/Dropdown";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
 
-const navItems = [
-  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/projects", label: "Projects", icon: FolderKanban },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-];
-
 export function AppLayout() {
+  const { t, i18n } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const organization = useAuthStore((s) => s.organization);
   const logout = useLogout();
@@ -40,6 +36,22 @@ export function AppLayout() {
   const [collapsed, setCollapsed] = useState(false);
   const [search, setSearch] = useState("");
   const [showCreateProject, setShowCreateProject] = useState(false);
+
+  // Sessions persisted before this feature shipped have no `language` on
+  // `user` (it didn't exist yet) — fall back to the backend's own default.
+  useEffect(() => {
+    const lang = user?.language ?? "es";
+    if (i18n.language !== lang) void i18n.changeLanguage(lang);
+  }, [user?.language, i18n]);
+
+  const navItems = useMemo(
+    () => [
+      { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+      { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
+      { to: "/reports", label: t("nav.reports"), icon: BarChart3 },
+    ],
+    [t],
+  );
 
   const { data: projectsPage } = useProjects({ limit: 8 });
   const projects = useMemo(() => {
@@ -57,7 +69,7 @@ export function AppLayout() {
       <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-jira-border bg-white px-3 py-2">
         <IconButton
           icon={collapsed ? PanelLeftOpen : PanelLeftClose}
-          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-label={collapsed ? t("nav.expandSidebar") : t("nav.collapseSidebar")}
           onClick={() => setCollapsed((v) => !v)}
         />
         <Link to="/dashboard" className="flex shrink-0 items-center gap-2 px-1">
@@ -68,7 +80,7 @@ export function AppLayout() {
             {orgInitial}
           </span>
           <span className="hidden text-[15px] font-bold tracking-tight text-jira-text sm:inline">
-            {organization?.name ?? "PM Platform"}
+            {organization?.name ?? t("auth.appName")}
           </span>
         </Link>
 
@@ -77,7 +89,7 @@ export function AppLayout() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search projects"
+            placeholder={t("nav.searchProjects")}
             className="w-full bg-transparent text-sm outline-none placeholder:text-jira-textSub"
           />
         </div>
@@ -90,15 +102,15 @@ export function AppLayout() {
               iconLeft={Plus}
               onClick={() => setShowCreateProject(true)}
             >
-              Create
+              {t("nav.create")}
             </Button>
           )}
-          <IconButton icon={Bell} aria-label="Notifications" />
-          <IconButton icon={HelpCircle} aria-label="Help" />
+          <IconButton icon={Bell} aria-label={t("nav.notifications")} />
+          <IconButton icon={HelpCircle} aria-label={t("nav.help")} />
           {user?.role === "admin" && (
             <IconButton
-              icon={Settings}
-              aria-label="Settings"
+              icon={SettingsIcon}
+              aria-label={t("nav.settings")}
               onClick={() => navigate("/settings/users")}
             />
           )}
@@ -106,7 +118,7 @@ export function AppLayout() {
           <Dropdown
             align="right"
             trigger={({ toggle }) => (
-              <button type="button" onClick={toggle} className="flex items-center" aria-label="Account menu">
+              <button type="button" onClick={toggle} className="flex items-center" aria-label={t("nav.accountMenu")}>
                 <Avatar name={user?.full_name ?? user?.email ?? "?"} size="sm" />
               </button>
             )}
@@ -118,7 +130,9 @@ export function AppLayout() {
                     {user?.full_name}
                   </div>
                   <div className="truncate text-xs text-jira-textSub">{user?.email}</div>
-                  <div className="mt-0.5 text-xs capitalize text-jira-textSub">{user?.role}</div>
+                  <div className="mt-0.5 text-xs text-jira-textSub">
+                    {user && t(`enums.userRole.${user.role}`)}
+                  </div>
                 </div>
                 <DropdownItem
                   onClick={() => {
@@ -128,7 +142,7 @@ export function AppLayout() {
                   disabled={logout.isPending}
                 >
                   <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-                  Log out
+                  {t("nav.logOut")}
                 </DropdownItem>
               </>
             )}
@@ -167,7 +181,7 @@ export function AppLayout() {
             {user?.role === "admin" && (
               <NavLink
                 to="/settings/users"
-                title="Users"
+                title={t("nav.users")}
                 className={({ isActive }) =>
                   clsx(
                     "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium",
@@ -179,16 +193,32 @@ export function AppLayout() {
                 }
               >
                 <UsersIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
-                {!collapsed && "Users"}
+                {!collapsed && t("nav.users")}
               </NavLink>
             )}
+            <NavLink
+              to="/settings/preferences"
+              title={t("nav.settings")}
+              className={({ isActive }) =>
+                clsx(
+                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm font-medium",
+                  collapsed && "justify-center px-0",
+                  isActive
+                    ? "bg-jira-blueBadgeBg text-brand-700"
+                    : "text-jira-textSub hover:bg-jira-hover hover:text-jira-text",
+                )
+              }
+            >
+              <SettingsIcon className="h-4 w-4 shrink-0" aria-hidden="true" />
+              {!collapsed && t("nav.settings")}
+            </NavLink>
           </nav>
 
           {!collapsed && (
             <div className="px-2 pb-3">
               <div className="flex items-center justify-between px-2.5 py-1.5">
                 <span className="text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                  Projects
+                  {t("nav.projectsSection")}
                 </span>
               </div>
               <div className="space-y-0.5">
@@ -216,14 +246,16 @@ export function AppLayout() {
                   </NavLink>
                 ))}
                 {projects.length === 0 && (
-                  <div className="px-2.5 py-1.5 text-xs text-jira-textSub">No projects found.</div>
+                  <div className="px-2.5 py-1.5 text-xs text-jira-textSub">
+                    {t("nav.noProjectsFound")}
+                  </div>
                 )}
               </div>
               <Link
                 to="/projects"
                 className="mt-1 block px-2.5 py-1.5 text-xs font-medium text-brand-600 hover:underline"
               >
-                View all projects →
+                {t("nav.viewAllProjects")}
               </Link>
             </div>
           )}
@@ -237,10 +269,10 @@ export function AppLayout() {
               )}
               onClick={() => logout.mutate()}
               disabled={logout.isPending}
-              title="Log out"
+              title={t("nav.logOut")}
             >
               <LogOut className="h-3.5 w-3.5" aria-hidden="true" />
-              {!collapsed && "Log out"}
+              {!collapsed && t("nav.logOut")}
             </button>
           </div>
         </aside>

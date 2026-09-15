@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
 import { ChevronLeft, ChevronRight, Diamond } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
@@ -9,8 +10,6 @@ import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Button } from "@/components/common/Button";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 import type { TaskRead } from "@/types/api";
-
-const WEEKDAY_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function toIso(d: Date): string {
   return d.toISOString().slice(0, 10);
@@ -29,11 +28,22 @@ function buildMonthGrid(year: number, month: number): Date[] {
 }
 
 export function ProjectCalendarTab() {
+  const { t, i18n } = useTranslation();
   const { project } = useProjectDetailContext();
   const { data, isLoading, error } = useGantt(project.id);
   const { data: members } = useProjectMembers(project.id);
   const [cursor, setCursor] = useState(() => new Date());
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+
+  const WEEKDAY_LABELS = [
+    t("calendar.mon"),
+    t("calendar.tue"),
+    t("calendar.wed"),
+    t("calendar.thu"),
+    t("calendar.fri"),
+    t("calendar.sat"),
+    t("calendar.sun"),
+  ];
 
   const memberUsers = useMemo(() => (members ?? []).map((m) => m.user), [members]);
   const days = useMemo(() => buildMonthGrid(cursor.getFullYear(), cursor.getMonth()), [cursor]);
@@ -54,11 +64,11 @@ export function ProjectCalendarTab() {
     return map;
   }, [data]);
 
-  if (isLoading) return <LoadingSpinner label="Loading calendar…" />;
+  if (isLoading) return <LoadingSpinner label={t("calendar.loading")} />;
   if (error) return <ErrorMessage error={error} />;
   if (!data) return null;
 
-  const monthLabel = cursor.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  const monthLabel = cursor.toLocaleDateString(i18n.language, { month: "long", year: "numeric" });
   const todayIso = toIso(new Date());
   const editingTask = data.tasks.find((t) => t.id === editingTaskId) ?? null;
 
@@ -72,17 +82,17 @@ export function ProjectCalendarTab() {
             iconLeft={ChevronLeft}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
           >
-            Prev
+            {t("calendar.prev")}
           </Button>
           <Button variant="secondary" onClick={() => setCursor(new Date())}>
-            Today
+            {t("calendar.today")}
           </Button>
           <Button
             variant="secondary"
             iconRight={ChevronRight}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
           >
-            Next
+            {t("calendar.next")}
           </Button>
         </div>
       </div>
@@ -129,7 +139,9 @@ export function ProjectCalendarTab() {
                   </button>
                 ))}
                 {dayTasks.length > 3 && (
-                  <div className="px-1 text-[10px] text-jira-textSub">+{dayTasks.length - 3} more</div>
+                  <div className="px-1 text-[10px] text-jira-textSub">
+                    {t("calendar.more", { count: dayTasks.length - 3 })}
+                  </div>
                 )}
               </div>
             </div>

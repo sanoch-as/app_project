@@ -1,10 +1,12 @@
 import { useState, type FormEvent } from "react";
 import clsx from "clsx";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useAuthStore } from "@/store/authStore";
 import { useBaselines, useCreateBaseline } from "@/hooks/useBaselines";
 import { useGantt } from "@/hooks/useTasks";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Modal } from "@/components/common/Modal";
@@ -17,6 +19,8 @@ const currencyFormatter = new Intl.NumberFormat(undefined, {
 });
 
 export function ProjectBaselinesTab() {
+  const { t, i18n } = useTranslation();
+  const formatDate = useDateFormat();
   const { project } = useProjectDetailContext();
   const role = useAuthStore((s) => s.user?.role);
   const { data: baselines, isLoading, error } = useBaselines(project.id);
@@ -36,7 +40,7 @@ export function ProjectBaselinesTab() {
   function handleCreate(e: FormEvent) {
     e.preventDefault();
     createBaseline.mutate(
-      { name: name || `Baseline ${new Date().toISOString().slice(0, 10)}` },
+      { name: name || t("baselines.defaultName", { date: new Date().toISOString().slice(0, 10) }) },
       { onSuccess: () => { setShowCreate(false); setName(""); } },
     );
   }
@@ -44,10 +48,10 @@ export function ProjectBaselinesTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-jira-text">Baselines</h2>
+        <h2 className="text-sm font-semibold text-jira-text">{t("baselines.title")}</h2>
         {role === "admin" && (
           <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
-            Save baseline
+            {t("baselines.saveBaseline")}
           </Button>
         )}
       </div>
@@ -57,7 +61,8 @@ export function ProjectBaselinesTab() {
 
       {sortedBaselines.length === 0 ? (
         <div className="card p-6 text-sm text-jira-textSub">
-          No baselines yet. {role === "admin" ? "Save one to establish planned value (PV)." : "Ask an admin to save one."}
+          {t("baselines.noBaselinesYet")}{" "}
+          {role === "admin" ? t("baselines.establishPv") : t("baselines.askAdmin")}
         </div>
       ) : (
         <>
@@ -75,7 +80,7 @@ export function ProjectBaselinesTab() {
               >
                 {b.name}
                 <span className="ml-1.5 text-xs text-jira-textSub">
-                  {new Date(b.created_at).toLocaleDateString()}
+                  {new Date(b.created_at).toLocaleDateString(i18n.language)}
                 </span>
               </button>
             ))}
@@ -86,14 +91,14 @@ export function ProjectBaselinesTab() {
               <table className="min-w-full divide-y divide-jira-border text-sm">
                 <thead className="bg-jira-panel">
                   <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
-                    <th className="px-3 py-2">Task</th>
-                    <th className="px-3 py-2">Planned start</th>
-                    <th className="px-3 py-2">Current start</th>
-                    <th className="px-3 py-2">Planned end</th>
-                    <th className="px-3 py-2">Current end</th>
-                    <th className="px-3 py-2">Planned cost</th>
-                    <th className="px-3 py-2">Current cost</th>
-                    <th className="px-3 py-2">% Done</th>
+                    <th className="px-3 py-2">{t("baselines.task")}</th>
+                    <th className="px-3 py-2">{t("baselines.plannedStart")}</th>
+                    <th className="px-3 py-2">{t("baselines.currentStart")}</th>
+                    <th className="px-3 py-2">{t("baselines.plannedEnd")}</th>
+                    <th className="px-3 py-2">{t("baselines.currentEnd")}</th>
+                    <th className="px-3 py-2">{t("baselines.plannedCost")}</th>
+                    <th className="px-3 py-2">{t("baselines.currentCost")}</th>
+                    <th className="px-3 py-2">{t("baselines.percentDone")}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-jira-borderSoft">
@@ -107,13 +112,13 @@ export function ProjectBaselinesTab() {
                         <td className="px-3 py-2 font-medium text-jira-text">
                           {current ? `${current.wbs_code} ${current.name}` : bt.task_id.slice(0, 8)}
                         </td>
-                        <td className="px-3 py-2 text-jira-textSub">{bt.planned_start_date}</td>
+                        <td className="px-3 py-2 text-jira-textSub">{formatDate(bt.planned_start_date)}</td>
                         <td className={`px-3 py-2 ${startSlip ? "font-medium text-jira-orange" : "text-jira-textSub"}`}>
-                          {current?.start_date ?? "—"}
+                          {formatDate(current?.start_date)}
                         </td>
-                        <td className="px-3 py-2 text-jira-textSub">{bt.planned_end_date}</td>
+                        <td className="px-3 py-2 text-jira-textSub">{formatDate(bt.planned_end_date)}</td>
                         <td className={`px-3 py-2 ${endSlip ? "font-medium text-jira-orange" : "text-jira-textSub"}`}>
-                          {current?.end_date ?? "—"}
+                          {formatDate(current?.end_date)}
                         </td>
                         <td className="px-3 py-2 text-jira-textSub">{currencyFormatter.format(bt.planned_cost)}</td>
                         <td className={`px-3 py-2 ${costOver ? "font-medium text-jira-red" : "text-jira-textSub"}`}>
@@ -131,31 +136,28 @@ export function ProjectBaselinesTab() {
       )}
 
       {showCreate && (
-        <Modal title="Save baseline" onClose={() => setShowCreate(false)} widthClassName="max-w-sm">
+        <Modal title={t("baselines.saveBaseline")} onClose={() => setShowCreate(false)} widthClassName="max-w-sm">
           <form onSubmit={handleCreate} className="space-y-4">
             <div>
               <label className="label" htmlFor="baseline_name">
-                Name
+                {t("common.name")}
               </label>
               <input
                 id="baseline_name"
                 className="input"
-                placeholder="e.g. Baseline 1 — kickoff plan"
+                placeholder={t("baselines.baselineNamePlaceholder")}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            <p className="text-xs text-jira-textSub">
-              Snapshots every task's current start/end date and budgeted cost. This becomes the
-              new reference for planned value (PV) in the S-curve.
-            </p>
+            <p className="text-xs text-jira-textSub">{t("baselines.createHint")}</p>
             <ErrorMessage error={createBaseline.error} />
             <div className="flex justify-end gap-2">
               <Button variant="secondary" onClick={() => setShowCreate(false)}>
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button variant="primary" type="submit" loading={createBaseline.isPending}>
-                {createBaseline.isPending ? "Saving…" : "Save baseline"}
+                {createBaseline.isPending ? t("common.saving") : t("baselines.saveBaseline")}
               </Button>
             </div>
           </form>

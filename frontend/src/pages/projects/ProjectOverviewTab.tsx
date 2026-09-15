@@ -1,9 +1,11 @@
 import { useMemo } from "react";
 import { RefreshCw } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useProgress, useRecalculateProgress } from "@/hooks/useProgress";
 import { useProjectDashboard } from "@/hooks/useDashboard";
 import { useGantt } from "@/hooks/useTasks";
+import { useDateFormat } from "@/hooks/useDateFormat";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Button } from "@/components/common/Button";
@@ -15,25 +17,11 @@ import { DonutChart } from "@/components/reports/DonutChart";
 import { chartColors } from "@/styles/chartColors";
 import type { TaskPriority, TaskStatus } from "@/types/api";
 
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  not_started: "To do",
-  in_progress: "In progress",
-  blocked: "Blocked",
-  completed: "Done",
-};
-
 const STATUS_COLOR: Record<TaskStatus, string> = {
   not_started: chartColors.blueSoft,
   in_progress: chartColors.blue,
   blocked: chartColors.red,
   completed: chartColors.green,
-};
-
-const PRIORITY_LABEL: Record<TaskPriority, string> = {
-  low: "Low",
-  medium: "Medium",
-  high: "High",
-  critical: "Critical",
 };
 
 const PRIORITY_COLOR: Record<TaskPriority, string> = {
@@ -44,6 +32,8 @@ const PRIORITY_COLOR: Record<TaskPriority, string> = {
 };
 
 export function ProjectOverviewTab() {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   const { project } = useProjectDetailContext();
   const { data: progress, isLoading: progressLoading, error: progressError } = useProgress(
     project.id,
@@ -55,6 +45,20 @@ export function ProjectOverviewTab() {
 
   const loading = progressLoading || dashboardLoading;
 
+  const statusLabel: Record<TaskStatus, string> = {
+    not_started: t("projects.overview.statusToDo"),
+    in_progress: t("enums.taskStatus.in_progress"),
+    blocked: t("enums.taskStatus.blocked"),
+    completed: t("projects.overview.statusDone"),
+  };
+
+  const priorityLabel: Record<TaskPriority, string> = {
+    low: t("enums.taskPriority.low"),
+    medium: t("enums.taskPriority.medium"),
+    high: t("enums.taskPriority.high"),
+    critical: t("enums.taskPriority.critical"),
+  };
+
   const statusData = useMemo(() => {
     const counts: Record<TaskStatus, number> = {
       not_started: 0,
@@ -64,27 +68,29 @@ export function ProjectOverviewTab() {
     };
     for (const task of gantt?.tasks ?? []) counts[task.status]++;
     return (Object.keys(counts) as TaskStatus[]).map((status) => ({
-      label: STATUS_LABEL[status],
+      label: statusLabel[status],
       value: counts[status],
       color: STATUS_COLOR[status],
     }));
-  }, [gantt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gantt, t]);
 
   const priorityData = useMemo(() => {
     const counts: Record<TaskPriority, number> = { low: 0, medium: 0, high: 0, critical: 0 };
     for (const task of gantt?.tasks ?? []) counts[task.priority]++;
     return (Object.keys(counts) as TaskPriority[]).map((priority) => ({
-      label: PRIORITY_LABEL[priority],
+      label: priorityLabel[priority],
       value: counts[priority],
       color: PRIORITY_COLOR[priority],
     }));
-  }, [gantt]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gantt, t]);
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-jira-textSub">
-          Status as of {progress?.status_date ?? "—"}
+          {t("projects.overview.statusAsOf", { date: formatDate(progress?.status_date) })}
         </h2>
         <Button
           variant="secondary"
@@ -92,7 +98,9 @@ export function ProjectOverviewTab() {
           onClick={() => recalculate.mutate()}
           loading={recalculate.isPending}
         >
-          {recalculate.isPending ? "Recalculating…" : "Recalculate now"}
+          {recalculate.isPending
+            ? t("projects.overview.recalculating")
+            : t("projects.overview.recalculateNow")}
         </Button>
       </div>
 
@@ -109,8 +117,8 @@ export function ProjectOverviewTab() {
           </div>
           {gantt && gantt.tasks.length > 0 && (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <DonutChart title="Tasks by status" data={statusData} />
-              <DonutChart title="Tasks by priority" data={priorityData} />
+              <DonutChart title={t("projects.overview.tasksByStatus")} data={statusData} />
+              <DonutChart title={t("projects.overview.tasksByPriority")} data={priorityData} />
             </div>
           )}
         </>

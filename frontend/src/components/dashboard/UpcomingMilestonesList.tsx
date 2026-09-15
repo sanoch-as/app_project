@@ -1,12 +1,18 @@
 import { Diamond } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { UpcomingMilestone } from "@/types/api";
+import { useDateFormat } from "@/hooks/useDateFormat";
 
 export function UpcomingMilestonesList({ milestones }: { milestones: UpcomingMilestone[] }) {
+  const { t } = useTranslation();
+  const formatDate = useDateFormat();
   return (
     <div className="card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-jira-text">Upcoming milestones</h3>
+      <h3 className="mb-3 text-sm font-semibold text-jira-text">
+        {t("dashboard.upcomingMilestonesTitle")}
+      </h3>
       {milestones.length === 0 ? (
-        <p className="text-sm text-jira-textSub">No upcoming milestones.</p>
+        <p className="text-sm text-jira-textSub">{t("dashboard.noUpcomingMilestones")}</p>
       ) : (
         <ul className="space-y-2">
           {milestones.map((m) => (
@@ -15,7 +21,7 @@ export function UpcomingMilestonesList({ milestones }: { milestones: UpcomingMil
                 <Diamond className="h-3 w-3 fill-jira-orange text-jira-orange" aria-hidden="true" />
                 {m.name}
               </span>
-              <span className="text-xs text-jira-textSub">{m.start_date}</span>
+              <span className="text-xs text-jira-textSub">{formatDate(m.start_date)}</span>
             </li>
           ))}
         </ul>

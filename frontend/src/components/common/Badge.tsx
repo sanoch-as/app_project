@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { ProjectStatus, TaskPriority, TaskStatus } from "@/types/api";
 import clsx from "clsx";
 
@@ -39,23 +40,27 @@ export function Pill({ tone, children }: { tone: Tone; children: React.ReactNode
 }
 
 export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
-  return <Pill tone={projectStatusTone[status]}>{status.replace("_", " ")}</Pill>;
+  const { t } = useTranslation();
+  return <Pill tone={projectStatusTone[status]}>{t(`enums.projectStatus.${status}`)}</Pill>;
 }
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
-  return <Pill tone={taskStatusTone[status]}>{status.replace("_", " ")}</Pill>;
+  const { t } = useTranslation();
+  return <Pill tone={taskStatusTone[status]}>{t(`enums.taskStatus.${status}`)}</Pill>;
 }
 
 export function PriorityBadge({ priority }: { priority: TaskPriority }) {
-  return <Pill tone={priorityTone[priority]}>{priority}</Pill>;
+  const { t } = useTranslation();
+  return <Pill tone={priorityTone[priority]}>{t(`enums.taskPriority.${priority}`)}</Pill>;
 }
 
 /** SPI/CPI read below 1.0 as behind schedule/over budget (red), >=1 as on/ahead (green). */
 export function IndexBadge({ label, value }: { label: string; value: number | null }) {
+  const { t } = useTranslation();
   if (value === null) {
     return (
       <span className="badge-pill bg-jira-grayBadgeBg text-jira-textSub normal-case">
-        {label}: n/a
+        {label}: {t("common.notApplicable")}
       </span>
     );
   }
@@ -63,7 +68,7 @@ export function IndexBadge({ label, value }: { label: string; value: number | nu
   return (
     <span
       className={clsx("badge-pill normal-case", good ? toneClasses.green : toneClasses.red)}
-      title={good ? "On/ahead of plan" : "Behind plan"}
+      title={good ? t("common.onAheadOfPlan") : t("common.behindPlan")}
     >
       {label}: {value.toFixed(2)}
     </span>

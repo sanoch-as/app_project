@@ -11,6 +11,10 @@
 
 export type UserRole = "admin" | "member";
 
+export type Language = "es" | "en";
+
+export type DateFormat = "iso" | "dmy";
+
 export type ProjectStatus =
   | "planning"
   | "active"
@@ -66,6 +70,8 @@ export interface UserRead {
   role: UserRole;
   cost_per_hour: number | null;
   is_active: boolean;
+  language: Language;
+  date_format: DateFormat;
   created_at: string;
   updated_at: string;
 }
@@ -109,6 +115,8 @@ export interface UserUpdate {
   cost_per_hour?: number | null;
   is_active?: boolean | null;
   role?: UserRole | null;
+  language?: Language | null;
+  date_format?: DateFormat | null;
 }
 
 // ---------------------------------------------------------------------------

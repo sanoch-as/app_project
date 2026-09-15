@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface ModalProps {
   title: string;
@@ -11,6 +12,7 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children, widthClassName = "max-w-lg" }: ModalProps) {
+  const { t } = useTranslation();
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -32,7 +34,7 @@ export function Modal({ title, onClose, children, widthClassName = "max-w-lg" }:
             type="button"
             onClick={onClose}
             className="rounded p-1 text-jira-textSub hover:bg-jira-hover hover:text-jira-text"
-            aria-label="Close"
+            aria-label={t("common.close")}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>

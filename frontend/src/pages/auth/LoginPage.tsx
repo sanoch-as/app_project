@@ -1,9 +1,11 @@
 import { useState, type FormEvent } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { useLogin } from "@/hooks/useAuth";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 
 export function LoginPage() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const login = useLogin();
@@ -30,13 +32,13 @@ export function LoginPage() {
           <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white">
             P
           </span>
-          <div className="text-xl font-bold text-jira-text">PM Platform</div>
-          <p className="mt-1 text-sm text-jira-textSub">Sign in to your organization</p>
+          <div className="text-xl font-bold text-jira-text">{t("auth.appName")}</div>
+          <p className="mt-1 text-sm text-jira-textSub">{t("auth.signInSubtitle")}</p>
         </div>
         <form onSubmit={handleSubmit} className="card space-y-4 p-6">
           <div>
             <label className="label" htmlFor="email">
-              Email
+              {t("auth.email")}
             </label>
             <input
               id="email"
@@ -50,7 +52,7 @@ export function LoginPage() {
           </div>
           <div>
             <label className="label" htmlFor="password">
-              Password
+              {t("auth.password")}
             </label>
             <input
               id="password"
@@ -64,13 +66,13 @@ export function LoginPage() {
           </div>
           <ErrorMessage error={login.error} />
           <button type="submit" className="btn-primary w-full" disabled={login.isPending}>
-            {login.isPending ? "Signing in…" : "Sign in"}
+            {login.isPending ? t("auth.signingIn") : t("auth.signIn")}
           </button>
         </form>
         <p className="mt-4 text-center text-sm text-jira-textSub">
-          No account yet?{" "}
+          {t("auth.noAccount")}{" "}
           <Link to="/register" className="font-medium text-brand-600 hover:underline">
-            Create an organization
+            {t("auth.createOrganization")}
           </Link>
         </p>
       </div>

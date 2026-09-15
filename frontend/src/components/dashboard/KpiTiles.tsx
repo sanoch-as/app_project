@@ -1,6 +1,7 @@
 import type { LucideIcon } from "lucide-react";
 import { CircleCheck, Gauge, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
 import clsx from "clsx";
+import { useTranslation } from "react-i18next";
 import type { EVMMetricsRead } from "@/types/api";
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
@@ -57,25 +58,31 @@ export function KpiTiles({
   metrics: EVMMetricsRead;
   percentComplete?: number;
 }) {
+  const { t } = useTranslation();
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {percentComplete !== undefined && (
-        <Tile label="% Complete" value={`${percentComplete.toFixed(1)}%`} icon={CircleCheck} tone="neutral" />
+        <Tile
+          label={t("dashboard.percentComplete")}
+          value={`${percentComplete.toFixed(1)}%`}
+          icon={CircleCheck}
+          tone="neutral"
+        />
       )}
-      <Tile label="Planned Value" value={currencyFormatter.format(metrics.pv)} icon={Wallet} />
-      <Tile label="Earned Value" value={currencyFormatter.format(metrics.ev)} icon={PiggyBank} />
-      <Tile label="Actual Cost" value={currencyFormatter.format(metrics.ac)} icon={Wallet} />
+      <Tile label={t("dashboard.plannedValue")} value={currencyFormatter.format(metrics.pv)} icon={Wallet} />
+      <Tile label={t("dashboard.earnedValue")} value={currencyFormatter.format(metrics.ev)} icon={PiggyBank} />
+      <Tile label={t("dashboard.actualCost")} value={currencyFormatter.format(metrics.ac)} icon={Wallet} />
       <Tile
         label="SPI"
-        value={metrics.spi === null ? "n/a" : metrics.spi.toFixed(2)}
-        hint="Schedule Performance Index"
+        value={metrics.spi === null ? t("common.notApplicable") : metrics.spi.toFixed(2)}
+        hint={t("dashboard.schedulePerformanceIndex")}
         tone={indexTone(metrics.spi)}
         icon={indexTone(metrics.spi) === "bad" ? TrendingDown : TrendingUp}
       />
       <Tile
         label="CPI"
-        value={metrics.cpi === null ? "n/a" : metrics.cpi.toFixed(2)}
-        hint="Cost Performance Index"
+        value={metrics.cpi === null ? t("common.notApplicable") : metrics.cpi.toFixed(2)}
+        hint={t("dashboard.costPerformanceIndex")}
         tone={indexTone(metrics.cpi)}
         icon={Gauge}
       />

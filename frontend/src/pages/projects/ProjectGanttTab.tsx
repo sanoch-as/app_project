@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
@@ -8,13 +9,14 @@ import { GanttChart } from "@/components/gantt/GanttChart";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 
 export function ProjectGanttTab() {
+  const { t } = useTranslation();
   const { project } = useProjectDetailContext();
   const { data, isLoading, error } = useGantt(project.id);
   const { data: members } = useProjectMembers(project.id);
   const updateTask = useUpdateTask(project.id);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
 
-  if (isLoading) return <LoadingSpinner label="Loading Gantt…" />;
+  if (isLoading) return <LoadingSpinner label={t("gantt.loading")} />;
   if (error) return <ErrorMessage error={error} />;
   if (!data) return null;
 

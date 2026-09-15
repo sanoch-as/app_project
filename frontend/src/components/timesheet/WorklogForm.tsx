@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import type { WorklogCreate, WorklogRead } from "@/types/api";
 
@@ -15,6 +16,7 @@ function today(): string {
 }
 
 export function WorklogForm({ initial, onSubmit, onCancel, isPending, error }: WorklogFormProps) {
+  const { t } = useTranslation();
   const [workDate, setWorkDate] = useState(initial?.work_date ?? today());
   const [hours, setHours] = useState(initial?.hours?.toString() ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -33,7 +35,7 @@ export function WorklogForm({ initial, onSubmit, onCancel, isPending, error }: W
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="label" htmlFor="work_date">
-            Date
+            {t("common.date")}
           </label>
           <input
             id="work_date"
@@ -46,7 +48,7 @@ export function WorklogForm({ initial, onSubmit, onCancel, isPending, error }: W
         </div>
         <div>
           <label className="label" htmlFor="hours">
-            Hours
+            {t("worklogs.hours")}
           </label>
           <input
             id="hours"
@@ -63,7 +65,7 @@ export function WorklogForm({ initial, onSubmit, onCancel, isPending, error }: W
       </div>
       <div>
         <label className="label" htmlFor="description">
-          Description (optional)
+          {t("worklogs.descriptionOptional")}
         </label>
         <textarea
           id="description"
@@ -77,11 +79,11 @@ export function WorklogForm({ initial, onSubmit, onCancel, isPending, error }: W
       <div className="flex justify-end gap-2">
         {onCancel && (
           <button type="button" className="btn-secondary" onClick={onCancel}>
-            Cancel
+            {t("common.cancel")}
           </button>
         )}
         <button type="submit" className="btn-primary" disabled={isPending}>
-          {isPending ? "Saving…" : initial ? "Save changes" : "Log hours"}
+          {isPending ? t("common.saving") : initial ? t("common.saveChanges") : t("worklogs.logHours")}
         </button>
       </div>
     </form>

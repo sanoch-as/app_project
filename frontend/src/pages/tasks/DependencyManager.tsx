@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from "react";
+import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useAddDependency, useRemoveDependency } from "@/hooks/useTasks";
@@ -12,16 +13,12 @@ interface DependencyManagerProps {
   onClose: () => void;
 }
 
-const DEP_TYPES: { value: DependencyType; label: string }[] = [
-  { value: "FS", label: "Finish-to-Start (FS)" },
-  { value: "SS", label: "Start-to-Start (SS)" },
-  { value: "FF", label: "Finish-to-Finish (FF)" },
-  { value: "SF", label: "Start-to-Finish (SF)" },
-];
+const DEP_TYPES: DependencyType[] = ["FS", "SS", "FF", "SF"];
 
 type Direction = "blocks" | "depends_on";
 
 export function DependencyManager({ projectId, task, allTasks, dependencies, onClose }: DependencyManagerProps) {
+  const { t } = useTranslation();
   const addDependency = useAddDependency(projectId);
   const removeDependency = useRemoveDependency(projectId);
 
@@ -57,12 +54,14 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
   }
 
   return (
-    <Modal title={`Dependencies — ${task.wbs_code} ${task.name}`} onClose={onClose}>
+    <Modal title={t("tasks.dependencies.title", { wbs: task.wbs_code, name: task.name })} onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-jira-text">Current dependencies</h3>
+          <h3 className="mb-2 text-sm font-semibold text-jira-text">
+            {t("tasks.dependencies.currentDependencies")}
+          </h3>
           {related.length === 0 ? (
-            <p className="text-sm text-jira-textSub">No dependencies yet.</p>
+            <p className="text-sm text-jira-textSub">{t("tasks.dependencies.noDependenciesYet")}</p>
           ) : (
             <ul className="space-y-1.5">
               {related.map((dep) => {
@@ -74,11 +73,13 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
                     className="flex items-center justify-between rounded-md border border-jira-border px-3 py-2 text-sm text-jira-text"
                   >
                     <span>
-                      {isPredecessor ? "Blocks" : "Depends on"}{" "}
-                      <strong>{other ? `${other.wbs_code} ${other.name}` : "Unknown task"}</strong>{" "}
+                      {isPredecessor ? t("tasks.dependencies.blocks") : t("tasks.dependencies.dependsOn")}{" "}
+                      <strong>
+                        {other ? `${other.wbs_code} ${other.name}` : t("tasks.dependencies.unknownTask")}
+                      </strong>{" "}
                       <span className="text-xs text-jira-textSub">
                         ({dep.dependency_type}
-                        {dep.lag_days !== 0 ? `, lag ${dep.lag_days}d` : ""})
+                        {dep.lag_days !== 0 && t("tasks.dependencies.lag", { days: dep.lag_days })})
                       </span>
                     </span>
                     <button
@@ -87,7 +88,7 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
                       onClick={() => removeDependency.mutate(dep.id)}
                       disabled={removeDependency.isPending}
                     >
-                      Remove
+                      {t("tasks.dependencies.remove")}
                     </button>
                   </li>
                 );
@@ -97,15 +98,15 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
         </div>
 
         <form onSubmit={handleAdd} className="space-y-3 border-t border-jira-borderSoft pt-4">
-          <h3 className="text-sm font-semibold text-jira-text">Add dependency</h3>
+          <h3 className="text-sm font-semibold text-jira-text">{t("tasks.dependencies.addDependency")}</h3>
           <div className="flex gap-2">
             <select
               className="input"
               value={direction}
               onChange={(e) => setDirection(e.target.value as Direction)}
             >
-              <option value="depends_on">This task depends on…</option>
-              <option value="blocks">This task blocks…</option>
+              <option value="depends_on">{t("tasks.dependencies.thisTaskDependsOn")}</option>
+              <option value="blocks">{t("tasks.dependencies.thisTaskBlocks")}</option>
             </select>
             <select
               className="input"
@@ -113,10 +114,10 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
               onChange={(e) => setOtherTaskId(e.target.value)}
               required
             >
-              <option value="">Select task…</option>
-              {otherOptions.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.wbs_code} — {t.name}
+              <option value="">{t("tasks.dependencies.selectTask")}</option>
+              {otherOptions.map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.wbs_code} — {task.name}
                 </option>
               ))}
             </select>
@@ -124,7 +125,7 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="label" htmlFor="dep_type">
-                Type
+                {t("tasks.dependencies.type")}
               </label>
               <select
                 id="dep_type"
@@ -132,16 +133,16 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
                 value={depType}
                 onChange={(e) => setDepType(e.target.value as DependencyType)}
               >
-                {DEP_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
+                {DEP_TYPES.map((value) => (
+                  <option key={value} value={value}>
+                    {t(`enums.dependencyType.${value}`)}
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <label className="label" htmlFor="lag_days">
-                Lag (days)
+                {t("tasks.dependencies.lagDays")}
               </label>
               <input
                 id="lag_days"
@@ -155,7 +156,7 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
           <ErrorMessage error={addDependency.error ?? removeDependency.error} />
           <div className="flex justify-end">
             <button type="submit" className="btn-primary" disabled={addDependency.isPending}>
-              {addDependency.isPending ? "Adding…" : "Add dependency"}
+              {addDependency.isPending ? t("tasks.dependencies.adding") : t("tasks.dependencies.addDependency")}
             </button>
           </div>
         </form>

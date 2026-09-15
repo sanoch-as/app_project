@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt } from "@/hooks/useTasks";
 import { useWorklogsReport } from "@/hooks/useWorklogs";
@@ -15,6 +16,7 @@ import { WorklogList } from "@/components/timesheet/WorklogList";
 import type { WorklogCreate } from "@/types/api";
 
 export function ProjectWorklogsTab() {
+  const { t } = useTranslation();
   const { project } = useProjectDetailContext();
   const queryClient = useQueryClient();
   const { data: gantt } = useGantt(project.id);
@@ -65,9 +67,11 @@ export function ProjectWorklogsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-jira-text">Timesheet — {project.name}</h2>
+        <h2 className="text-sm font-semibold text-jira-text">
+          {t("worklogs.timesheetTitle", { name: project.name })}
+        </h2>
         <Button variant="primary" iconLeft={Plus} onClick={() => setShowLogModal(true)}>
-          Log hours
+          {t("worklogs.logHours")}
         </Button>
       </div>
 
@@ -89,10 +93,10 @@ export function ProjectWorklogsTab() {
       )}
 
       {showLogModal && (
-        <Modal title="Log hours" onClose={() => setShowLogModal(false)}>
+        <Modal title={t("worklogs.logHours")} onClose={() => setShowLogModal(false)}>
           <div className="mb-3">
             <label className="label" htmlFor="task_select">
-              Task
+              {t("worklogs.task")}
             </label>
             <select
               id="task_select"
@@ -100,10 +104,10 @@ export function ProjectWorklogsTab() {
               value={logForTaskId}
               onChange={(e) => setLogForTaskId(e.target.value)}
             >
-              <option value="">Select a task…</option>
-              {(gantt?.tasks ?? []).map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.wbs_code} — {t.name}
+              <option value="">{t("worklogs.selectTask")}</option>
+              {(gantt?.tasks ?? []).map((task) => (
+                <option key={task.id} value={task.id}>
+                  {task.wbs_code} — {task.name}
                 </option>
               ))}
             </select>
