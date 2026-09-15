@@ -245,3 +245,18 @@ async def test_list_tasks_filters_by_status(client: AsyncClient):
     body = response.json()
     assert body["total"] == 1
     assert body["items"][0]["id"] == task_id
+
+
+async def test_absurd_duration_days_is_rejected(client: AsyncClient):
+    # services/working_calendar.py walks one calendar day at a time, so an
+    # unbounded duration would let a single request hang indefinitely.
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    response = await client.post(
+        f"/api/v1/projects/{project['id']}/tasks",
+        json={"name": "Runaway task", "start_date": "2026-09-14", "duration_days": 10_000_000},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 422

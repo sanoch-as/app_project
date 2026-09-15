@@ -7,13 +7,13 @@ from pydantic import BaseModel, ConfigDict, Field
 class WorklogCreate(BaseModel):
     work_date: date
     hours: float = Field(gt=0, le=24)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
 
 
 class WorklogUpdate(BaseModel):
     work_date: date | None = None
     hours: float | None = Field(default=None, gt=0, le=24)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=2000)
 
 
 class WorklogRead(BaseModel):

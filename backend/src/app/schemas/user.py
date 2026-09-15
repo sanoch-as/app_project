@@ -22,7 +22,7 @@ class UserRead(BaseModel):
 
 class UserUpdate(BaseModel):
     full_name: str | None = Field(default=None, min_length=1, max_length=255)
-    cost_per_hour: float | None = Field(default=None, ge=0)
+    cost_per_hour: float | None = Field(default=None, ge=0, le=100_000)
     is_active: bool | None = None
     role: UserRole | None = None
 
@@ -33,5 +33,5 @@ class UserInvite(BaseModel):
     email: EmailStr
     full_name: str = Field(min_length=1, max_length=255)
     role: UserRole = UserRole.MEMBER
-    cost_per_hour: float | None = Field(default=None, ge=0)
+    cost_per_hour: float | None = Field(default=None, ge=0, le=100_000)
     password: str = Field(min_length=8, max_length=128)

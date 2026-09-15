@@ -132,3 +132,18 @@ async def test_successor_must_be_in_same_project(client: AsyncClient):
         headers=auth_header(admin_token),
     )
     assert response.status_code == 422
+
+
+async def test_absurd_lag_days_is_rejected(client: AsyncClient):
+    # Same rationale as the duration_days bound on tasks: unbounded lag would
+    # let services/working_calendar.py's day-by-day walk hang a request.
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    ctx = await _create_project_and_tasks(client, admin_token, 2)
+
+    response = await client.post(
+        f"/api/v1/tasks/{ctx['task_ids'][0]}/dependencies",
+        json={"successor_id": ctx["task_ids"][1], "lag_days": 10_000_000},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 422

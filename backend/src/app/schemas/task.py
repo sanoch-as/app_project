@@ -20,31 +20,39 @@ class TaskAssigneeRead(BaseModel):
     allocation_percent: float
 
 
+# Working-day arithmetic (services/working_calendar.py) walks forward one
+# calendar day at a time, so an unbounded duration_days/lag_days would let a
+# single request loop essentially forever inside the request handler (a real
+# resource-exhaustion vector, not just a data-quality one) — 3650 working
+# days is about 14 calendar years, already far beyond any real task/lag.
+MAX_WORKING_DAYS = 3650
+
+
 class TaskCreate(BaseModel):
     parent_task_id: uuid.UUID | None = None
     name: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10_000)
     start_date: date
-    duration_days: int = Field(ge=0)
+    duration_days: int = Field(ge=0, le=MAX_WORKING_DAYS)
     is_milestone: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
-    estimated_hours: float | None = Field(default=None, ge=0)
-    budgeted_cost: float = Field(default=0, ge=0)
-    assignees: list[TaskAssigneeInput] = Field(default_factory=list)
+    estimated_hours: float | None = Field(default=None, ge=0, le=1_000_000)
+    budgeted_cost: float = Field(default=0, ge=0, le=1_000_000_000)
+    assignees: list[TaskAssigneeInput] = Field(default_factory=list, max_length=100)
 
 
 class TaskUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10_000)
     start_date: date | None = None
-    duration_days: int | None = Field(default=None, ge=0)
+    duration_days: int | None = Field(default=None, ge=0, le=MAX_WORKING_DAYS)
     percent_complete: float | None = Field(default=None, ge=0, le=100)
     status: TaskStatus | None = None
     priority: TaskPriority | None = None
     is_milestone: bool | None = None
-    estimated_hours: float | None = Field(default=None, ge=0)
-    budgeted_cost: float | None = Field(default=None, ge=0)
-    assignees: list[TaskAssigneeInput] | None = None
+    estimated_hours: float | None = Field(default=None, ge=0, le=1_000_000)
+    budgeted_cost: float | None = Field(default=None, ge=0, le=1_000_000_000)
+    assignees: list[TaskAssigneeInput] | None = Field(default=None, max_length=100)
 
 
 class TaskRead(BaseModel):

@@ -52,23 +52,25 @@ class ProjectRead(BaseModel):
 
 class ProjectCreate(BaseModel):
     name: str = Field(min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10_000)
     start_date: date | None = None
     end_date: date | None = None
     working_days_per_week: int = Field(default=5, ge=1, le=7)
     standard_hours_per_day: float = Field(default=8.0, gt=0, le=24)
-    holidays: list[date] = Field(default_factory=list)
+    holidays: list[date] = Field(default_factory=list, max_length=1000)
 
 
 class ProjectUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=255)
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=10_000)
     status: ProjectStatus | None = None
     start_date: date | None = None
     end_date: date | None = None
     working_days_per_week: int | None = Field(default=None, ge=1, le=7)
     standard_hours_per_day: float | None = Field(default=None, gt=0, le=24)
-    holidays: list[date] | None = Field(default=None, description="Full replace when provided")
+    holidays: list[date] | None = Field(
+        default=None, max_length=1000, description="Full replace when provided"
+    )
 
 
 class ProjectMemberRead(BaseModel):
