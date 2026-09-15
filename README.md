@@ -111,6 +111,7 @@ Two **separate** Vercel projects from the same repo, per the spec's architecture
 - **Root Directory**: `frontend`
 - **Framework Preset**: Vite (auto-detected)
 - **Environment variables**: `VITE_API_BASE_URL` = `https://<backend-project>.vercel.app/api/v1`
+- `frontend/vercel.json` rewrites every path to `/index.html` so client-side routing (React Router) works on a direct page load/refresh, not just in-app navigation — no extra dashboard configuration needed.
 - Deploy.
 
 Every push to `main` deploys both projects to production via Vercel's native Git integration; every PR gets its own preview deployment of each. `.github/workflows/ci.yml` runs lint/type-check/tests on both — it does not deploy (that's Vercel's job, not this workflow's).
