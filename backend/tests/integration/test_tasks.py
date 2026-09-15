@@ -31,7 +31,9 @@ async def test_create_task_computes_end_date_from_working_calendar(client: Async
     assert task["end_date"] == "2026-09-21"
     assert task["wbs_code"] == "1"
     assert task["status"] == "not_started"
-    assert task["is_critical"] is False
+    # A lone task with no dependencies has zero float — it's trivially critical.
+    assert task["is_critical"] is True
+    assert task["total_float"] == 0
 
 
 async def test_milestone_has_zero_duration_and_same_start_end(client: AsyncClient):

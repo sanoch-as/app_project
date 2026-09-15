@@ -151,6 +151,18 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
+## ADR-016: Dependency constraints follow section 6.1's formula literally — `FS` lag 0 permits a same-day start
+
+**Context**: Section 6.1 gives the CPM forward-pass formula explicitly: "FS: `EF_predecessor + lag`; SS: `ES_predecessor + lag`; etc." Many scheduling tools (MS Project included, in some configurations) treat `FS` with lag 0 as requiring the successor to start the *next* working period after the predecessor finishes, i.e. an implicit "+1". The spec's own formula has no such implicit offset.
+
+**Decision**: Implement the formula exactly as written: for `FS`, `successor.early_start >= predecessor.early_finish + lag_days` (working days), so `lag_days = 0` allows the successor to start on the very same calendar day the predecessor finishes. The same "no implicit offset" reading applies symmetrically to `SS`/`FF`/`SF` (`services/critical_path.py`'s `forward_constraint`/`_backward_constraint`, reused by `services/scheduler.py`'s cascade). `lag_days` is a plain integer count of working days added via `WorkingCalendar.shift_working_days` (skipping weekends/holidays); a negative value is a lead ("adelanto"), pulling the successor earlier and permitting overlap.
+
+**Alternatives considered**: Adding an implicit "+1 working day" for `FS`/`SF` the way some tools do (rejected — not what section 6.1 states, and would silently diverge from a spec that gives an explicit formula rather than leaving this to convention).
+
+**Consequences**: A `FS` dependency with `lag_days = 0` lets predecessor and successor occupy the same calendar day (e.g. a 1-day predecessor finishing Friday and a 1-day `FS` successor also landing on that Friday). A project that wants a mandatory one-day gap should model it as `lag_days = 1`. This is documented behavior, not a rounding quirk — `tests/unit/test_critical_path.py` and `test_scheduler.py` assert it directly.
+
+---
+
 ## ADR-014: `bcrypt` pinned to `4.0.1`, not the newest release
 
 **Context**: `passlib` 1.7.4 (the version required by section 2, and the newest one that exists — the project has been unmaintained since 2020) runs a self-test the first time it hashes/verifies a password, to detect a historical "wraparound bug" in some bcrypt builds. That self-test assumes bcrypt silently truncates secrets longer than 72 bytes. Starting with `bcrypt` 4.1, the `bcrypt` package raises `ValueError` on oversized secrets instead of truncating — which makes passlib's own self-test crash with `ValueError: password cannot be longer than 72 bytes`, on every single hash/verify call, independent of the actual password used by this app (none of which are anywhere near 72 bytes). This reproduced identically with `bcrypt` 5.0.0 (the version that installs by default on Python 3.14) and is a known upstream incompatibility, not a bug in this codebase.

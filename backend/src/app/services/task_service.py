@@ -8,17 +8,11 @@ from app.core.exceptions import ValidationAppError
 from app.core.security import CurrentUser
 from app.models.project import Project
 from app.models.task import Task
-from app.repositories import project_repository, task_repository, user_repository
+from app.repositories import task_repository, user_repository
 from app.schemas.task import TaskAssigneeInput
-from app.services import project_service
-from app.services.working_calendar import WorkingCalendar
+from app.services import project_service, schedule_service
 
-
-async def get_calendar(db: AsyncSession, project: Project) -> WorkingCalendar:
-    holidays = await project_repository.get_holidays(db, project.id)
-    return WorkingCalendar(
-        working_days_per_week=project.working_days_per_week, holidays=frozenset(holidays)
-    )
+get_calendar = schedule_service.get_calendar
 
 
 async def _validate_assignees(
@@ -86,6 +80,7 @@ async def create_task(
         await task_repository.set_assignees(
             db, task.id, [(a.user_id, a.allocation_percent) for a in assignees]
         )
+    await schedule_service.recalculate_schedule(db, project, calendar, changed_task_id=task.id)
     await db.commit()
     reloaded = await task_repository.get_by_id(db, current_user.organization_id, task.id)
     assert reloaded is not None
@@ -123,7 +118,17 @@ async def update_task(
             db, task.id, [(a.user_id, a.allocation_percent) for a in assignees]
         )
 
+    if recompute_end_date:
+        await schedule_service.recalculate_schedule(db, project, calendar, changed_task_id=task.id)
+
     await db.commit()
     reloaded = await task_repository.get_by_id(db, current_user.organization_id, task.id)
     assert reloaded is not None
     return reloaded
+
+
+async def delete_task(db: AsyncSession, project: Project, task: Task) -> None:
+    await task_repository.delete(db, task)
+    calendar = await get_calendar(db, project)
+    await schedule_service.recalculate_schedule(db, project, calendar)
+    await db.commit()

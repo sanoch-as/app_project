@@ -76,10 +76,15 @@ POST   /api/v1/projects/{id}/tasks
 GET    /api/v1/tasks/{id}
 PATCH  /api/v1/tasks/{id}
 DELETE /api/v1/tasks/{id}
+GET    /api/v1/projects/{id}/gantt
 
 POST   /api/v1/tasks/{id}/dependencies
 DELETE /api/v1/dependencies/{id}
 ```
+
+**Phase 3 — CPM engine + cascade rescheduling** (no new routes; existing ones now trigger the engine)
+- Creating/editing a task (when `start_date`/`duration_days`/`is_milestone` changes), creating a dependency, or deleting a task/dependency all synchronously recompute `early_start`/`early_finish`/`late_start`/`late_finish`/`total_float`/`is_critical` for every task in the project (`services/critical_path.py`), and — for a task whose own dates just changed — cascade that change forward into any successor that would otherwise violate its dependency constraint (`services/scheduler.py`), recursively. See ADR-016 for the exact `FS`/`SS`/`FF`/`SF` constraint formulas (taken literally from spec section 6.1, including that `FS` with `lag_days = 0` permits a same-day start).
+- `GET /projects/{id}/gantt` returns every task (with CPM fields and assignees) and every dependency of the project in one unpaginated payload — the "list/Kanban/calendar" alternate views (section 4.1 point 15) are pure frontend presentations over this same data (and over `GET /projects/{id}/tasks`), not separate endpoints.
 
 Notes on things that aren't a literal transcription of section 7:
 - **Holidays** (`project_holidays` table) have no dedicated endpoint — they're managed as a `holidays: string[]` (ISO dates) field on `POST /projects` and `PATCH /projects/{id}` (full replace when the field is provided on PATCH). See ADR-015.

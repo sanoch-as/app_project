@@ -4,6 +4,7 @@ from datetime import date, datetime
 from pydantic import BaseModel, ConfigDict, Field
 
 from app.core.enums import TaskPriority, TaskStatus
+from app.schemas.dependency import DependencyRead
 from app.schemas.user import UserRead
 
 
@@ -73,3 +74,11 @@ class TaskRead(BaseModel):
     assignees: list[TaskAssigneeRead]
     created_at: datetime
     updated_at: datetime
+
+
+class GanttResponse(BaseModel):
+    """Optimized payload for the Gantt view (section 7): every task and
+    dependency of the project in one response, no pagination."""
+
+    tasks: list[TaskRead]
+    dependencies: list[DependencyRead]

@@ -7,9 +7,10 @@ from app.core.database import get_db
 from app.core.enums import TaskStatus
 from app.core.exceptions import NotFoundError
 from app.core.security import CurrentUser, get_current_user
-from app.repositories import task_repository
+from app.repositories import dependency_repository, task_repository
 from app.schemas.common import Page
-from app.schemas.task import TaskCreate, TaskRead, TaskUpdate
+from app.schemas.dependency import DependencyRead
+from app.schemas.task import GanttResponse, TaskCreate, TaskRead, TaskUpdate
 from app.services import project_service, task_service
 
 # No single prefix: this module serves both /projects/{id}/tasks and /tasks/{id}
@@ -32,6 +33,21 @@ async def list_tasks(
     )
     return Page[TaskRead](
         items=[TaskRead.model_validate(t) for t in tasks], total=total, limit=limit, offset=offset
+    )
+
+
+@router.get("/projects/{project_id}/gantt", response_model=GanttResponse)
+async def get_gantt(
+    project_id: uuid.UUID,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> GanttResponse:
+    await project_service.get_project_for_user(db, current_user, project_id)
+    tasks = await task_repository.list_all_by_project(db, project_id, with_assignees=True)
+    dependencies = await dependency_repository.list_by_project(db, project_id)
+    return GanttResponse(
+        tasks=[TaskRead.model_validate(t) for t in tasks],
+        dependencies=[DependencyRead.model_validate(d) for d in dependencies],
     )
 
 
@@ -103,6 +119,5 @@ async def delete_task(
     task = await task_repository.get_by_id(db, current_user.organization_id, task_id)
     if task is None:
         raise NotFoundError("Task not found")
-    await project_service.get_project_for_user(db, current_user, task.project_id)
-    await task_repository.delete(db, task)
-    await db.commit()
+    project = await project_service.get_project_for_user(db, current_user, task.project_id)
+    await task_service.delete_task(db, project, task)

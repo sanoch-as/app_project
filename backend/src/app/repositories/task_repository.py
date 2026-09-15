@@ -51,11 +51,17 @@ async def list_by_project(
     return list(result.scalars().all()), total
 
 
-async def list_all_by_project(db: AsyncSession, project_id: uuid.UUID) -> list[Task]:
-    """Unpaginated — used by the Gantt view and the CPM/scheduler engine, which need every task."""
-    result = await db.execute(
-        select(Task).where(Task.project_id == project_id).order_by(Task.wbs_code)
-    )
+async def list_all_by_project(
+    db: AsyncSession, project_id: uuid.UUID, *, with_assignees: bool = False
+) -> list[Task]:
+    """Unpaginated — used by the Gantt view and the CPM/scheduler engine, which
+    need every task in one query (section 6.1 point 5). `with_assignees` is
+    only worth the extra join for the Gantt view; the CPM/scheduler engine
+    never looks at assignees."""
+    query = select(Task).where(Task.project_id == project_id).order_by(Task.wbs_code)
+    if with_assignees:
+        query = query.options(selectinload(Task.assignees).selectinload(TaskAssignee.user))
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 

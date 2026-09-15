@@ -43,3 +43,32 @@ class WorkingCalendar:
                 count += 1
             current += timedelta(days=1)
         return count
+
+    def shift_working_days(self, start: date, n: int) -> date:
+        """The date reached by moving `n` working days from `start` (not
+        counting `start` itself); negative `n` moves backward (used for lead
+        time / "adelanto" and for the CPM backward pass). `n == 0` returns `start`."""
+        if n == 0:
+            return start
+        step = 1 if n > 0 else -1
+        remaining = abs(n)
+        current = start
+        while remaining > 0:
+            current += timedelta(days=step)
+            if self.is_working_day(current):
+                remaining -= 1
+        return current
+
+    def working_day_offset(self, start: date, end: date) -> int:
+        """Signed number of working days from `start` to `end`: the `n` such
+        that `shift_working_days(start, n) == end`. Used for CPM total float."""
+        if end == start:
+            return 0
+        step = 1 if end > start else -1
+        count = 0
+        current = start
+        while current != end:
+            current += timedelta(days=step)
+            if self.is_working_day(current):
+                count += step
+        return count
