@@ -24,11 +24,14 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-jira-panel px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-bold text-brand-700">PM Platform</div>
-          <p className="mt-1 text-sm text-slate-500">Sign in to your organization</p>
+          <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white">
+            P
+          </span>
+          <div className="text-xl font-bold text-jira-text">PM Platform</div>
+          <p className="mt-1 text-sm text-jira-textSub">Sign in to your organization</p>
         </div>
         <form onSubmit={handleSubmit} className="card space-y-4 p-6">
           <div>
@@ -64,7 +67,7 @@ export function LoginPage() {
             {login.isPending ? "Signing in…" : "Sign in"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 text-center text-sm text-jira-textSub">
           No account yet?{" "}
           <Link to="/register" className="font-medium text-brand-600 hover:underline">
             Create an organization

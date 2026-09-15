@@ -147,7 +147,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
               value={workingDaysPerWeek}
               onChange={(e) => setWorkingDaysPerWeek(Number(e.target.value))}
             />
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-jira-textSub">
               5 = Mon–Fri, 6 = Mon–Sat, 7 = every day (ADR-012).
             </p>
           </div>
@@ -183,7 +183,7 @@ export function ProjectFormModal({ initial, onClose, onSaved }: ProjectFormModal
 
         <ErrorMessage error={mutation.error} />
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+        <div className="flex justify-end gap-2 border-t border-jira-borderSoft pt-3">
           <button type="button" className="btn-secondary" onClick={onClose}>
             Cancel
           </button>

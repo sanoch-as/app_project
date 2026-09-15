@@ -1,21 +1,28 @@
+import { AlertTriangle, PartyPopper } from "lucide-react";
 import type { OverdueTask } from "@/types/api";
 import { TaskStatusBadge } from "@/components/common/Badge";
 
 export function OverdueTasksList({ tasks }: { tasks: OverdueTask[] }) {
   return (
     <div className="card p-4">
-      <h3 className="mb-3 text-sm font-semibold text-slate-700">
+      <h3 className="mb-3 text-sm font-semibold text-jira-text">
         Overdue tasks {tasks.length > 0 && `(${tasks.length})`}
       </h3>
       {tasks.length === 0 ? (
-        <p className="text-sm text-slate-400">Nothing overdue. 🎉</p>
+        <p className="flex items-center gap-1.5 text-sm text-jira-textSub">
+          <PartyPopper className="h-3.5 w-3.5" aria-hidden="true" />
+          Nothing overdue.
+        </p>
       ) : (
         <ul className="space-y-2">
           {tasks.map((task) => (
             <li key={task.id} className="flex items-center justify-between text-sm">
-              <span className="text-slate-700">{task.name}</span>
+              <span className="text-jira-text">{task.name}</span>
               <span className="flex items-center gap-2">
-                <span className="text-xs text-red-600">due {task.end_date}</span>
+                <span className="flex items-center gap-1 text-xs text-jira-red">
+                  <AlertTriangle className="h-3 w-3" aria-hidden="true" />
+                  due {task.end_date}
+                </span>
                 <TaskStatusBadge status={task.status} />
               </span>
             </li>

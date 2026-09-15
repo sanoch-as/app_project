@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import clsx from "clsx";
+import { ChevronLeft, ChevronRight, Diamond } from "lucide-react";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { Button } from "@/components/common/Button";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 import type { TaskRead } from "@/types/api";
 
@@ -63,29 +65,31 @@ export function ProjectCalendarTab() {
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">{monthLabel}</h2>
+        <h2 className="text-sm font-semibold text-jira-text">{monthLabel}</h2>
         <div className="flex gap-2">
-          <button
-            className="btn-secondary"
+          <Button
+            variant="secondary"
+            iconLeft={ChevronLeft}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
           >
-            ← Prev
-          </button>
-          <button className="btn-secondary" onClick={() => setCursor(new Date())}>
+            Prev
+          </Button>
+          <Button variant="secondary" onClick={() => setCursor(new Date())}>
             Today
-          </button>
-          <button
-            className="btn-secondary"
+          </Button>
+          <Button
+            variant="secondary"
+            iconRight={ChevronRight}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
           >
-            Next →
-          </button>
+            Next
+          </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-slate-200 bg-slate-200 [&>*]:bg-white">
+      <div className="grid grid-cols-7 overflow-hidden rounded-lg border border-jira-border bg-jira-border [&>*]:bg-white">
         {WEEKDAY_LABELS.map((label) => (
-          <div key={label} className="px-2 py-1.5 text-center text-xs font-medium text-slate-500">
+          <div key={label} className="px-2 py-1.5 text-center text-xs font-medium text-jira-textSub">
             {label}
           </div>
         ))}
@@ -97,12 +101,12 @@ export function ProjectCalendarTab() {
             <div
               key={iso}
               className={clsx(
-                "min-h-[6.5rem] border-t border-slate-100 p-1.5 align-top",
-                !inMonth && "bg-slate-50 text-slate-300",
-                iso === todayIso && "bg-amber-50",
+                "min-h-[6.5rem] border-t border-jira-borderSoft p-1.5 align-top",
+                !inMonth && "bg-jira-panel text-jira-textSub/50",
+                iso === todayIso && "bg-jira-blueBadgeBg",
               )}
             >
-              <div className="mb-1 text-right text-xs font-medium text-slate-400">
+              <div className="mb-1 text-right text-xs font-medium text-jira-textSub">
                 {day.getDate()}
               </div>
               <div className="space-y-1">
@@ -111,21 +115,21 @@ export function ProjectCalendarTab() {
                     key={task.id}
                     onClick={() => setEditingTaskId(task.id)}
                     className={clsx(
-                      "block w-full truncate rounded px-1 py-0.5 text-left text-[11px]",
+                      "flex w-full items-center gap-1 truncate rounded px-1 py-0.5 text-left text-[11px]",
                       task.is_milestone
-                        ? "bg-amber-200 text-amber-900"
+                        ? "bg-orange-50 text-jira-orange"
                         : task.is_critical
-                          ? "bg-red-100 text-red-800"
-                          : "bg-brand-100 text-brand-800",
+                          ? "bg-red-50 text-jira-red"
+                          : "bg-jira-blueBadgeBg text-jira-blueBadgeText",
                     )}
                     title={task.name}
                   >
-                    {task.is_milestone ? "🔶 " : ""}
-                    {task.name}
+                    {task.is_milestone && <Diamond className="h-2.5 w-2.5 shrink-0 fill-current" aria-hidden="true" />}
+                    <span className="truncate">{task.name}</span>
                   </button>
                 ))}
                 {dayTasks.length > 3 && (
-                  <div className="px-1 text-[10px] text-slate-400">+{dayTasks.length - 3} more</div>
+                  <div className="px-1 text-[10px] text-jira-textSub">+{dayTasks.length - 3} more</div>
                 )}
               </div>
             </div>

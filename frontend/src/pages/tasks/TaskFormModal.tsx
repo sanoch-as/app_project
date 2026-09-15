@@ -174,18 +174,18 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
               min={0}
               required
               disabled={isMilestone}
-              className="input disabled:bg-slate-100"
+              className="input disabled:bg-jira-hover"
               value={isMilestone ? 0 : durationDays}
               onChange={(e) => setDurationDays(Number(e.target.value))}
             />
           </div>
         </div>
-        <p className="-mt-2 text-xs text-slate-400">
+        <p className="-mt-2 text-xs text-jira-textSub">
           End date is computed by the server from start date + duration using the project's
           working calendar — it is never entered directly.
         </p>
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-jira-text">
           <input
             type="checkbox"
             checked={isMilestone}
@@ -245,11 +245,11 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
         <div>
           <span className="label">Assignees</span>
           {members.length === 0 ? (
-            <p className="text-sm text-slate-400">
+            <p className="text-sm text-jira-textSub">
               No members on this project yet — add some in the Members tab.
             </p>
           ) : (
-            <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-slate-200 p-2">
+            <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-jira-border p-2">
               {assignees.map((row) => {
                 const member = members.find((m) => m.id === row.userId)!;
                 return (
@@ -259,9 +259,9 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
                       checked={row.selected}
                       onChange={() => toggleAssignee(row.userId)}
                     />
-                    <span className="flex-1">{member.full_name}</span>
+                    <span className="flex-1 text-jira-text">{member.full_name}</span>
                     {row.selected && (
-                      <span className="flex items-center gap-1 text-xs text-slate-500">
+                      <span className="flex items-center gap-1 text-xs text-jira-textSub">
                         <input
                           type="number"
                           min={0}
@@ -282,7 +282,7 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
 
         <ErrorMessage error={mutation.error} />
 
-        <div className="flex justify-end gap-2 border-t border-slate-100 pt-3">
+        <div className="flex justify-end gap-2 border-t border-jira-borderSoft pt-3">
           <button type="button" className="btn-secondary" onClick={onClose}>
             Cancel
           </button>

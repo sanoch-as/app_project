@@ -1,23 +1,36 @@
 import { useState } from "react";
 import { NavLink, Outlet, useParams } from "react-router-dom";
 import clsx from "clsx";
+import {
+  Calendar,
+  FileBarChart2,
+  GanttChartSquare,
+  KanbanSquare,
+  LayoutDashboard,
+  ListChecks,
+  Milestone,
+  Pencil,
+  Clock,
+  Users,
+} from "lucide-react";
 import { useProject } from "@/hooks/useProjects";
 import { useAuthStore } from "@/store/authStore";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ProjectStatusBadge } from "@/components/common/Badge";
+import { Button } from "@/components/common/Button";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
 
 const TABS = [
-  { to: "overview", label: "Overview" },
-  { to: "gantt", label: "Gantt" },
-  { to: "tasks", label: "Tasks" },
-  { to: "kanban", label: "Kanban" },
-  { to: "calendar", label: "Calendar" },
-  { to: "baselines", label: "Baselines" },
-  { to: "worklogs", label: "Worklogs" },
-  { to: "members", label: "Members" },
-  { to: "reports", label: "Reports" },
+  { to: "overview", label: "Overview", icon: LayoutDashboard },
+  { to: "gantt", label: "Gantt", icon: GanttChartSquare },
+  { to: "tasks", label: "Tasks", icon: ListChecks },
+  { to: "kanban", label: "Kanban", icon: KanbanSquare },
+  { to: "calendar", label: "Calendar", icon: Calendar },
+  { to: "baselines", label: "Baselines", icon: Milestone },
+  { to: "worklogs", label: "Worklogs", icon: Clock },
+  { to: "members", label: "Members", icon: Users },
+  { to: "reports", label: "Reports", icon: FileBarChart2 },
 ];
 
 export function ProjectDetailPage() {
@@ -35,38 +48,39 @@ export function ProjectDetailPage() {
       <div className="mb-4 flex items-start justify-between">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-xl font-semibold text-slate-900">{project.name}</h1>
+            <h1 className="text-xl font-semibold text-jira-text">{project.name}</h1>
             <ProjectStatusBadge status={project.status} />
           </div>
           {project.description && (
-            <p className="mt-1 max-w-2xl text-sm text-slate-500">{project.description}</p>
+            <p className="mt-1 max-w-2xl text-sm text-jira-textSub">{project.description}</p>
           )}
-          <p className="mt-1 text-xs text-slate-400">
+          <p className="mt-1 text-xs text-jira-textSub">
             {project.start_date ?? "no start date"} → {project.end_date ?? "no end date"}
           </p>
         </div>
         {role === "admin" && (
-          <button type="button" className="btn-secondary" onClick={() => setEditing(true)}>
+          <Button variant="secondary" iconLeft={Pencil} onClick={() => setEditing(true)}>
             Edit project
-          </button>
+          </Button>
         )}
       </div>
 
-      <div className="mb-6 border-b border-slate-200">
-        <nav className="-mb-px flex flex-wrap gap-4">
+      <div className="mb-6 overflow-x-auto border-b border-jira-border">
+        <nav className="-mb-px flex flex-nowrap gap-1">
           {TABS.map((tab) => (
             <NavLink
               key={tab.to}
               to={tab.to}
               className={({ isActive }) =>
                 clsx(
-                  "border-b-2 px-1 py-2 text-sm font-medium",
+                  "flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium",
                   isActive
                     ? "border-brand-600 text-brand-700"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-700",
+                    : "border-transparent text-jira-textSub hover:bg-jira-hover hover:text-jira-text",
                 )
               }
             >
+              <tab.icon className="h-3.5 w-3.5" aria-hidden="true" />
               {tab.label}
             </NavLink>
           ))}

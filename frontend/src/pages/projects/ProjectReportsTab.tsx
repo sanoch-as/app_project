@@ -1,27 +1,32 @@
 import { useState } from "react";
+import { Clock, Download, FileText, ListChecks, type LucideIcon } from "lucide-react";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { downloadProjectExport } from "@/api/reportsExport";
 import { getApiErrorMessage } from "@/api/client";
+import { Button } from "@/components/common/Button";
 import type { ExportType } from "@/types/api";
 
-const EXPORTS: { type: ExportType; label: string; description: string; extension: string }[] = [
+const EXPORTS: { type: ExportType; label: string; description: string; extension: string; icon: LucideIcon }[] = [
   {
     type: "tasks",
     label: "Tasks (CSV)",
     description: "Every task with WBS, dates, status, priority, cost and CPM fields.",
     extension: "csv",
+    icon: ListChecks,
   },
   {
     type: "worklogs",
     label: "Worklogs (CSV)",
     description: "Every logged hour on this project, with user, date and description.",
     extension: "csv",
+    icon: Clock,
   },
   {
     type: "summary",
     label: "Project summary (PDF)",
     description: "A one-page PDF with KPIs and S-curve numbers.",
     extension: "pdf",
+    icon: FileText,
   },
 ];
 
@@ -45,9 +50,9 @@ export function ProjectReportsTab() {
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm font-semibold text-slate-700">Export reports</h2>
+      <h2 className="text-sm font-semibold text-jira-text">Export reports</h2>
       {error && (
-        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-jira-red">
           {error}
         </div>
       )}
@@ -55,17 +60,21 @@ export function ProjectReportsTab() {
         {EXPORTS.map((exp) => (
           <div key={exp.type} className="card flex flex-col justify-between p-4">
             <div>
-              <h3 className="font-medium text-slate-800">{exp.label}</h3>
-              <p className="mt-1 text-sm text-slate-500">{exp.description}</p>
+              <span className="mb-2 flex h-9 w-9 items-center justify-center rounded-md bg-jira-blueBadgeBg">
+                <exp.icon className="h-4 w-4 text-jira-blueBadgeText" aria-hidden="true" />
+              </span>
+              <h3 className="font-medium text-jira-text">{exp.label}</h3>
+              <p className="mt-1 text-sm text-jira-textSub">{exp.description}</p>
             </div>
-            <button
-              type="button"
-              className="btn-primary mt-4"
-              disabled={pending === exp.type}
+            <Button
+              variant="primary"
+              iconLeft={Download}
+              className="mt-4"
+              loading={pending === exp.type}
               onClick={() => handleDownload(exp.type, exp.extension)}
             >
               {pending === exp.type ? "Downloading…" : "Download"}
-            </button>
+            </Button>
           </div>
         ))}
       </div>

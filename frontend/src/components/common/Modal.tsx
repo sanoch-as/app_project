@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { X } from "lucide-react";
 
 interface ModalProps {
   title: string;
@@ -19,21 +20,21 @@ export function Modal({ title, onClose, children, widthClassName = "max-w-lg" }:
   }, [onClose]);
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-slate-900/40 p-4 pt-16">
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-jira-text/40 p-4 pt-16">
       <div
         role="dialog"
         aria-modal="true"
-        className={`w-full ${widthClassName} rounded-lg bg-white shadow-xl`}
+        className={`w-full ${widthClassName} rounded-lg bg-white shadow-jira-md`}
       >
-        <div className="flex items-center justify-between border-b border-slate-200 px-5 py-3">
-          <h2 className="text-base font-semibold text-slate-900">{title}</h2>
+        <div className="flex items-center justify-between border-b border-jira-border px-5 py-3">
+          <h2 className="text-base font-semibold text-jira-text">{title}</h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+            className="rounded p-1 text-jira-textSub hover:bg-jira-hover hover:text-jira-text"
             aria-label="Close"
           >
-            ✕
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
         <div className="max-h-[75vh] overflow-y-auto px-5 py-4">{children}</div>

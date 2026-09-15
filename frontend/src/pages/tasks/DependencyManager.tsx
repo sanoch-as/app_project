@@ -60,9 +60,9 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
     <Modal title={`Dependencies — ${task.wbs_code} ${task.name}`} onClose={onClose}>
       <div className="space-y-4">
         <div>
-          <h3 className="mb-2 text-sm font-semibold text-slate-700">Current dependencies</h3>
+          <h3 className="mb-2 text-sm font-semibold text-jira-text">Current dependencies</h3>
           {related.length === 0 ? (
-            <p className="text-sm text-slate-400">No dependencies yet.</p>
+            <p className="text-sm text-jira-textSub">No dependencies yet.</p>
           ) : (
             <ul className="space-y-1.5">
               {related.map((dep) => {
@@ -71,19 +71,19 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
                 return (
                   <li
                     key={dep.id}
-                    className="flex items-center justify-between rounded-md border border-slate-200 px-3 py-2 text-sm"
+                    className="flex items-center justify-between rounded-md border border-jira-border px-3 py-2 text-sm text-jira-text"
                   >
                     <span>
                       {isPredecessor ? "Blocks" : "Depends on"}{" "}
                       <strong>{other ? `${other.wbs_code} ${other.name}` : "Unknown task"}</strong>{" "}
-                      <span className="text-xs text-slate-400">
+                      <span className="text-xs text-jira-textSub">
                         ({dep.dependency_type}
                         {dep.lag_days !== 0 ? `, lag ${dep.lag_days}d` : ""})
                       </span>
                     </span>
                     <button
                       type="button"
-                      className="text-xs font-medium text-red-600 hover:underline"
+                      className="text-xs font-medium text-jira-red hover:underline"
                       onClick={() => removeDependency.mutate(dep.id)}
                       disabled={removeDependency.isPending}
                     >
@@ -96,8 +96,8 @@ export function DependencyManager({ projectId, task, allTasks, dependencies, onC
           )}
         </div>
 
-        <form onSubmit={handleAdd} className="space-y-3 border-t border-slate-100 pt-4">
-          <h3 className="text-sm font-semibold text-slate-700">Add dependency</h3>
+        <form onSubmit={handleAdd} className="space-y-3 border-t border-jira-borderSoft pt-4">
+          <h3 className="text-sm font-semibold text-jira-text">Add dependency</h3>
           <div className="flex gap-2">
             <select
               className="input"

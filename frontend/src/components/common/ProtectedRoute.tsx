@@ -18,7 +18,7 @@ export function AdminOnly({ children }: { children: ReactNode }) {
   const role = useAuthStore((s) => s.user?.role);
   if (role !== "admin") {
     return (
-      <div className="card p-6 text-sm text-slate-500">
+      <div className="card p-6 text-sm text-jira-textSub">
         This section is only available to organization admins.
       </div>
     );

@@ -1,3 +1,6 @@
+import type { LucideIcon } from "lucide-react";
+import { CircleCheck, Gauge, PiggyBank, TrendingDown, TrendingUp, Wallet } from "lucide-react";
+import clsx from "clsx";
 import type { EVMMetricsRead } from "@/types/api";
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
@@ -6,33 +9,43 @@ const currencyFormatter = new Intl.NumberFormat(undefined, {
   maximumFractionDigits: 0,
 });
 
+type Tone = "good" | "bad" | "neutral";
+
+const toneStyles: Record<Tone, { text: string; iconBg: string; iconText: string }> = {
+  good: { text: "text-jira-greenBadgeText", iconBg: "bg-jira-greenBadgeBg", iconText: "text-jira-greenBadgeText" },
+  bad: { text: "text-jira-red", iconBg: "bg-red-50", iconText: "text-jira-red" },
+  neutral: { text: "text-jira-text", iconBg: "bg-jira-blueBadgeBg", iconText: "text-jira-blueBadgeText" },
+};
+
 function Tile({
   label,
   value,
   hint,
-  tone,
+  tone = "neutral",
+  icon: Icon,
 }: {
   label: string;
   value: string;
   hint?: string;
-  tone?: "good" | "bad" | "neutral";
+  tone?: Tone;
+  icon: LucideIcon;
 }) {
-  const toneClass =
-    tone === "good"
-      ? "text-green-700"
-      : tone === "bad"
-        ? "text-red-700"
-        : "text-slate-900";
+  const styles = toneStyles[tone];
   return (
-    <div className="card p-4">
-      <div className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</div>
-      <div className={`mt-1 text-2xl font-semibold ${toneClass}`}>{value}</div>
-      {hint && <div className="mt-0.5 text-xs text-slate-400">{hint}</div>}
+    <div className="card flex items-start gap-3 p-4">
+      <span className={clsx("flex h-9 w-9 shrink-0 items-center justify-center rounded-md", styles.iconBg)}>
+        <Icon className={clsx("h-4 w-4", styles.iconText)} aria-hidden="true" />
+      </span>
+      <div className="min-w-0">
+        <div className="text-xs font-medium uppercase tracking-wide text-jira-textSub">{label}</div>
+        <div className={clsx("mt-0.5 text-xl font-bold leading-tight", styles.text)}>{value}</div>
+        {hint && <div className="mt-0.5 truncate text-xs text-jira-textSub">{hint}</div>}
+      </div>
     </div>
   );
 }
 
-function indexTone(value: number | null): "good" | "bad" | "neutral" {
+function indexTone(value: number | null): Tone {
   if (value === null) return "neutral";
   return value >= 1 ? "good" : "bad";
 }
@@ -45,24 +58,26 @@ export function KpiTiles({
   percentComplete?: number;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {percentComplete !== undefined && (
-        <Tile label="% Complete" value={`${percentComplete.toFixed(1)}%`} />
+        <Tile label="% Complete" value={`${percentComplete.toFixed(1)}%`} icon={CircleCheck} tone="neutral" />
       )}
-      <Tile label="Planned Value" value={currencyFormatter.format(metrics.pv)} />
-      <Tile label="Earned Value" value={currencyFormatter.format(metrics.ev)} />
-      <Tile label="Actual Cost" value={currencyFormatter.format(metrics.ac)} />
+      <Tile label="Planned Value" value={currencyFormatter.format(metrics.pv)} icon={Wallet} />
+      <Tile label="Earned Value" value={currencyFormatter.format(metrics.ev)} icon={PiggyBank} />
+      <Tile label="Actual Cost" value={currencyFormatter.format(metrics.ac)} icon={Wallet} />
       <Tile
         label="SPI"
         value={metrics.spi === null ? "n/a" : metrics.spi.toFixed(2)}
         hint="Schedule Performance Index"
         tone={indexTone(metrics.spi)}
+        icon={indexTone(metrics.spi) === "bad" ? TrendingDown : TrendingUp}
       />
       <Tile
         label="CPI"
         value={metrics.cpi === null ? "n/a" : metrics.cpi.toFixed(2)}
         hint="Cost Performance Index"
         tone={indexTone(metrics.cpi)}
+        icon={Gauge}
       />
     </div>
   );

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { Plus } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useDeleteProject, useProjects } from "@/hooks/useProjects";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { ProjectStatusBadge } from "@/components/common/Badge";
+import { Button } from "@/components/common/Button";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
 import type { ProjectRead } from "@/types/api";
 
@@ -22,13 +24,13 @@ export function ProjectsListPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Projects</h1>
-          <p className="text-sm text-slate-500">All projects visible to you.</p>
+          <h1 className="text-xl font-semibold text-jira-text">Projects</h1>
+          <p className="text-sm text-jira-textSub">All projects visible to you.</p>
         </div>
         {role === "admin" && (
-          <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
-            + New project
-          </button>
+          <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
+            New project
+          </Button>
         )}
       </div>
 
@@ -37,9 +39,9 @@ export function ProjectsListPage() {
 
       {data && (
         <div className="card overflow-hidden">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+          <table className="min-w-full divide-y divide-jira-border text-sm">
+            <thead className="bg-jira-panel">
+              <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Status</th>
                 <th className="px-4 py-2">Start</th>
@@ -47,10 +49,10 @@ export function ProjectsListPage() {
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-jira-borderSoft">
               {data.items.map((project) => (
-                <tr key={project.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-2 font-medium text-slate-800">
+                <tr key={project.id} className="hover:bg-jira-hover">
+                  <td className="px-4 py-2 font-medium text-jira-text">
                     <Link to={`/projects/${project.id}/overview`} className="hover:underline">
                       {project.name}
                     </Link>
@@ -58,8 +60,8 @@ export function ProjectsListPage() {
                   <td className="px-4 py-2">
                     <ProjectStatusBadge status={project.status} />
                   </td>
-                  <td className="px-4 py-2 text-slate-500">{project.start_date ?? "—"}</td>
-                  <td className="px-4 py-2 text-slate-500">{project.end_date ?? "—"}</td>
+                  <td className="px-4 py-2 text-jira-textSub">{project.start_date ?? "—"}</td>
+                  <td className="px-4 py-2 text-jira-textSub">{project.end_date ?? "—"}</td>
                   <td className="px-4 py-2 text-right">
                     {role === "admin" && (
                       <div className="flex justify-end gap-3">
@@ -72,7 +74,7 @@ export function ProjectsListPage() {
                         </button>
                         <button
                           type="button"
-                          className="text-xs font-medium text-red-600 hover:underline"
+                          className="text-xs font-medium text-jira-red hover:underline"
                           onClick={() => setDeleting(project)}
                         >
                           Delete
@@ -84,7 +86,7 @@ export function ProjectsListPage() {
               ))}
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-400">
+                  <td colSpan={5} className="px-4 py-8 text-center text-jira-textSub">
                     No projects yet.
                   </td>
                 </tr>

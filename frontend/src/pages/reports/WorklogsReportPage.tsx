@@ -1,9 +1,11 @@
 import { useMemo, useState } from "react";
+import { Download } from "lucide-react";
 import { useProjects } from "@/hooks/useProjects";
 import { useUsers } from "@/hooks/useUsers";
 import { useWorklogsReport } from "@/hooks/useWorklogs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
+import { Button } from "@/components/common/Button";
 import { downloadProjectExport } from "@/api/reportsExport";
 import { getApiErrorMessage } from "@/api/client";
 
@@ -48,8 +50,8 @@ export function WorklogsReportPage() {
 
   return (
     <div>
-      <h1 className="mb-1 text-xl font-semibold text-slate-900">Worklogs report</h1>
-      <p className="mb-6 text-sm text-slate-500">
+      <h1 className="mb-1 text-xl font-semibold text-jira-text">Worklogs report</h1>
+      <p className="mb-6 text-sm text-jira-textSub">
         Hours logged across projects, filterable by project, user and date range.
       </p>
 
@@ -87,20 +89,20 @@ export function WorklogsReportPage() {
       </div>
 
       <div className="mb-3 flex items-center justify-between">
-        <div className="text-sm text-slate-500">
+        <div className="text-sm text-jira-textSub">
           {data ? `${data.total} entr${data.total === 1 ? "y" : "ies"} · ${totalHours.toFixed(2)}h total` : ""}
         </div>
         <div className="flex items-center gap-2">
           {exportError && <ErrorMessage error={exportError} />}
-          <button
-            type="button"
-            className="btn-secondary"
+          <Button
+            variant="secondary"
+            iconLeft={Download}
             disabled={!projectId || exporting}
             title={!projectId ? "Select a single project to export its worklogs as CSV" : undefined}
             onClick={handleExport}
           >
             {exporting ? "Exporting…" : "Export CSV (selected project)"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -109,27 +111,27 @@ export function WorklogsReportPage() {
 
       {data && (
         <div className="card overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+          <table className="min-w-full divide-y divide-jira-border text-sm">
+            <thead className="bg-jira-panel">
+              <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
                 <th className="px-3 py-2">Date</th>
                 <th className="px-3 py-2">User</th>
                 <th className="px-3 py-2">Hours</th>
                 <th className="px-3 py-2">Description</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-jira-borderSoft">
               {data.items.map((w) => (
-                <tr key={w.id}>
-                  <td className="px-3 py-2">{w.work_date}</td>
-                  <td className="px-3 py-2">{userNameById.get(w.user_id) ?? w.user_id.slice(0, 8)}</td>
-                  <td className="px-3 py-2">{w.hours}</td>
-                  <td className="px-3 py-2 text-slate-500">{w.description ?? "—"}</td>
+                <tr key={w.id} className="hover:bg-jira-hover">
+                  <td className="px-3 py-2 text-jira-text">{w.work_date}</td>
+                  <td className="px-3 py-2 text-jira-text">{userNameById.get(w.user_id) ?? w.user_id.slice(0, 8)}</td>
+                  <td className="px-3 py-2 text-jira-text">{w.hours}</td>
+                  <td className="px-3 py-2 text-jira-textSub">{w.description ?? "—"}</td>
                 </tr>
               ))}
               {data.items.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-3 py-8 text-center text-slate-400">
+                  <td colSpan={4} className="px-3 py-8 text-center text-jira-textSub">
                     No worklogs match these filters.
                   </td>
                 </tr>

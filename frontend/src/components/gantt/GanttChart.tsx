@@ -139,7 +139,7 @@ export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: G
   return (
     <div className="gantt-chart-container">
       <div className="mb-3 flex items-center justify-between">
-        <div className="flex gap-1 rounded-md border border-slate-300 bg-white p-0.5">
+        <div className="flex gap-1 rounded-md border border-jira-border bg-white p-0.5">
           {VIEW_MODES.map((mode) => (
             <button
               key={mode.value}
@@ -148,30 +148,30 @@ export function GanttChart({ tasks, dependencies, onDateChange, onTaskClick }: G
               className={`rounded px-2.5 py-1 text-xs font-medium ${
                 viewMode === mode.value
                   ? "bg-brand-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                  : "text-jira-textSub hover:bg-jira-hover"
               }`}
             >
               {mode.label}
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-3 text-xs text-slate-500">
+        <div className="flex items-center gap-3 text-xs text-jira-textSub">
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-300 ring-1 ring-red-600" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-jira-red/20 ring-1 ring-jira-red" />
             Critical path
           </span>
           <span className="flex items-center gap-1">
-            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-amber-200 ring-1 ring-amber-600" />
+            <span className="inline-block h-2.5 w-2.5 rounded-sm bg-jira-orange/20 ring-1 ring-jira-orange" />
             Milestone
           </span>
         </div>
       </div>
       {tasks.length === 0 ? (
-        <div className="card p-8 text-center text-sm text-slate-500">
+        <div className="card p-8 text-center text-sm text-jira-textSub">
           No tasks yet. Create a task to see it on the Gantt chart.
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white p-2">
+        <div className="overflow-x-auto rounded-lg border border-jira-border bg-white p-2">
           <div ref={containerRef} />
         </div>
       )}

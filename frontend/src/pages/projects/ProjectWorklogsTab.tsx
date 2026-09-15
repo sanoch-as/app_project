@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Plus } from "lucide-react";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useGantt } from "@/hooks/useTasks";
 import { useWorklogsReport } from "@/hooks/useWorklogs";
@@ -8,6 +9,7 @@ import { worklogsApi } from "@/api/worklogs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Modal } from "@/components/common/Modal";
+import { Button } from "@/components/common/Button";
 import { WorklogForm } from "@/components/timesheet/WorklogForm";
 import { WorklogList } from "@/components/timesheet/WorklogList";
 import type { WorklogCreate } from "@/types/api";
@@ -63,10 +65,10 @@ export function ProjectWorklogsTab() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">Timesheet — {project.name}</h2>
-        <button type="button" className="btn-primary" onClick={() => setShowLogModal(true)}>
-          + Log hours
-        </button>
+        <h2 className="text-sm font-semibold text-jira-text">Timesheet — {project.name}</h2>
+        <Button variant="primary" iconLeft={Plus} onClick={() => setShowLogModal(true)}>
+          Log hours
+        </Button>
       </div>
 
       {isLoading && <LoadingSpinner />}

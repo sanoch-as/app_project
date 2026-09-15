@@ -1,8 +1,10 @@
 import { useState } from "react";
+import { Pencil, Trash2 } from "lucide-react";
 import type { UserRead, WorklogRead } from "@/types/api";
 import { useAuthStore } from "@/store/authStore";
 import { Modal } from "@/components/common/Modal";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { IconButton } from "@/components/common/IconButton";
 import { WorklogForm } from "@/components/timesheet/WorklogForm";
 import { getApiErrorMessage } from "@/api/client";
 
@@ -44,15 +46,15 @@ export function WorklogList({
   }
 
   if (worklogs.length === 0) {
-    return <p className="py-4 text-sm text-slate-400">No hours logged yet.</p>;
+    return <p className="py-4 text-sm text-jira-textSub">No hours logged yet.</p>;
   }
 
   return (
     <>
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="min-w-full divide-y divide-jira-border text-sm">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+            <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
               {getTaskLabel && <th className="py-1.5 pr-3">Task</th>}
               <th className="py-1.5 pr-3">Date</th>
               <th className="py-1.5 pr-3">User</th>
@@ -61,39 +63,33 @@ export function WorklogList({
               <th className="py-1.5 pr-3" />
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-jira-borderSoft">
             {worklogs.map((w) => (
-              <tr key={w.id}>
+              <tr key={w.id} className="hover:bg-jira-hover">
                 {getTaskLabel && (
-                  <td className="py-1.5 pr-3 max-w-[12rem] truncate" title={getTaskLabel(w)}>
+                  <td className="py-1.5 pr-3 max-w-[12rem] truncate text-jira-text" title={getTaskLabel(w)}>
                     {getTaskLabel(w)}
                   </td>
                 )}
-                <td className="py-1.5 pr-3 whitespace-nowrap">{w.work_date}</td>
-                <td className="py-1.5 pr-3 whitespace-nowrap">
+                <td className="py-1.5 pr-3 whitespace-nowrap text-jira-text">{w.work_date}</td>
+                <td className="py-1.5 pr-3 whitespace-nowrap text-jira-text">
                   {w.user_id === currentUser?.id
                     ? "You"
                     : (userNameById.get(w.user_id) ?? w.user_id.slice(0, 8))}
                 </td>
-                <td className="py-1.5 pr-3">{w.hours}</td>
-                <td className="py-1.5 pr-3 text-slate-500">{w.description ?? "—"}</td>
+                <td className="py-1.5 pr-3 text-jira-text">{w.hours}</td>
+                <td className="py-1.5 pr-3 text-jira-textSub">{w.description ?? "—"}</td>
                 <td className="py-1.5 pr-3 text-right">
                   {canManage(w) && (
-                    <div className="flex justify-end gap-2">
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-brand-600 hover:underline"
-                        onClick={() => setEditing(w)}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        className="text-xs font-medium text-red-600 hover:underline"
+                    <div className="flex justify-end gap-1">
+                      <IconButton icon={Pencil} size="sm" aria-label="Edit worklog" onClick={() => setEditing(w)} />
+                      <IconButton
+                        icon={Trash2}
+                        size="sm"
+                        aria-label="Delete worklog"
+                        className="hover:bg-jira-red/10 hover:text-jira-red"
                         onClick={() => setDeleting(w)}
-                      >
-                        Delete
-                      </button>
+                      />
                     </div>
                   )}
                 </td>

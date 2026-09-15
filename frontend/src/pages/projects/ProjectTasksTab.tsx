@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import {
-  flexRender,
   getCoreRowModel,
   getFilteredRowModel,
   getSortedRowModel,
@@ -8,15 +7,21 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
+import { Diamond, Filter, Link2, Pencil, Plus, Trash2, Clock as ClockIcon } from "lucide-react";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
-import { useDeleteTask, useGantt, useProjectTasks } from "@/hooks/useTasks";
+import { useDeleteTask, useGantt, useProjectTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
 import { useCreateWorklog } from "@/hooks/useWorklogs";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import { Modal } from "@/components/common/Modal";
-import { PriorityBadge, TaskStatusBadge } from "@/components/common/Badge";
+import { PriorityBadge } from "@/components/common/Badge";
+import { StatusDropdownBadge } from "@/components/common/StatusDropdownBadge";
+import { DataTable } from "@/components/common/DataTable";
+import { Button } from "@/components/common/Button";
+import { IconButton } from "@/components/common/IconButton";
+import { Dropdown, DropdownItem } from "@/components/common/Dropdown";
 import { WorklogForm } from "@/components/timesheet/WorklogForm";
 import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 import { DependencyManager } from "@/pages/tasks/DependencyManager";
@@ -37,6 +42,7 @@ export function ProjectTasksTab() {
   const { data: gantt } = useGantt(project.id);
   const { data: members } = useProjectMembers(project.id);
   const deleteTask = useDeleteTask(project.id);
+  const updateTask = useUpdateTask(project.id);
 
   const [showCreate, setShowCreate] = useState(false);
   const [editingTask, setEditingTask] = useState<TaskRead | null>(null);
@@ -49,21 +55,39 @@ export function ProjectTasksTab() {
 
   const columns = useMemo<ColumnDef<TaskRead>[]>(
     () => [
-      { accessorKey: "wbs_code", header: "WBS" },
+      {
+        accessorKey: "wbs_code",
+        header: "Key",
+        cell: ({ row }) => (
+          <span className="rounded bg-jira-blueBadgeBg px-1.5 py-0.5 font-mono text-xs font-semibold text-jira-blueBadgeText">
+            {row.original.wbs_code}
+          </span>
+        ),
+      },
       {
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
-          <span>
+          <span className="inline-flex items-center gap-1.5">
+            {row.original.is_milestone && (
+              <Diamond
+                className="h-3 w-3 shrink-0 fill-jira-orange text-jira-orange"
+                aria-label="Milestone"
+              />
+            )}
             {row.original.name}
-            {row.original.is_milestone && <span className="ml-1" title="Milestone">🔶</span>}
           </span>
         ),
       },
       {
         accessorKey: "status",
         header: "Status",
-        cell: ({ row }) => <TaskStatusBadge status={row.original.status} />,
+        cell: ({ row }) => (
+          <StatusDropdownBadge
+            status={row.original.status}
+            onChange={(status) => updateTask.mutate({ taskId: row.original.id, payload: { status } })}
+          />
+        ),
       },
       {
         accessorKey: "priority",
@@ -82,11 +106,11 @@ export function ProjectTasksTab() {
         header: "Critical",
         cell: ({ row }) =>
           row.original.is_critical ? (
-            <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700">
+            <span className="badge-pill normal-case bg-jira-red/10 text-jira-red">
               critical · {row.original.total_float ?? 0}d float
             </span>
           ) : (
-            <span className="text-xs text-slate-400">
+            <span className="text-xs text-jira-textSub">
               {row.original.total_float ?? "—"}d float
             </span>
           ),
@@ -103,24 +127,37 @@ export function ProjectTasksTab() {
         id: "actions",
         header: "",
         cell: ({ row }) => (
-          <div className="flex justify-end gap-2 whitespace-nowrap text-xs">
-            <button className="font-medium text-brand-600 hover:underline" onClick={() => setEditingTask(row.original)}>
-              Edit
-            </button>
-            <button className="font-medium text-slate-600 hover:underline" onClick={() => setManagingDeps(row.original)}>
-              Dependencies
-            </button>
-            <button className="font-medium text-slate-600 hover:underline" onClick={() => setLoggingHours(row.original)}>
-              Log hours
-            </button>
-            <button className="font-medium text-red-600 hover:underline" onClick={() => setDeleting(row.original)}>
-              Delete
-            </button>
+          <div className="flex justify-end gap-1">
+            <IconButton
+              icon={Pencil}
+              size="sm"
+              aria-label="Edit task"
+              onClick={() => setEditingTask(row.original)}
+            />
+            <IconButton
+              icon={Link2}
+              size="sm"
+              aria-label="Manage dependencies"
+              onClick={() => setManagingDeps(row.original)}
+            />
+            <IconButton
+              icon={ClockIcon}
+              size="sm"
+              aria-label="Log hours"
+              onClick={() => setLoggingHours(row.original)}
+            />
+            <IconButton
+              icon={Trash2}
+              size="sm"
+              aria-label="Delete task"
+              className="hover:bg-jira-red/10 hover:text-jira-red"
+              onClick={() => setDeleting(row.original)}
+            />
           </div>
         ),
       },
     ],
-    [],
+    [updateTask],
   );
 
   const table = useReactTable({
@@ -137,6 +174,8 @@ export function ProjectTasksTab() {
       row.original.wbs_code.toLowerCase().includes(filterValue.toLowerCase()),
   });
 
+  const statusFilterLabel = statusFilter === "" ? "All statuses" : statusFilter.replace("_", " ");
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -147,66 +186,40 @@ export function ProjectTasksTab() {
             value={nameFilter}
             onChange={(e) => setNameFilter(e.target.value)}
           />
-          <select
-            className="input w-40"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as TaskStatus | "")}
+          <Dropdown
+            trigger={({ toggle }) => (
+              <Button variant="secondary" size="sm" iconLeft={Filter} onClick={toggle}>
+                <span className="capitalize">{statusFilterLabel}</span>
+              </Button>
+            )}
           >
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s === "" ? "All statuses" : s.replace("_", " ")}
-              </option>
-            ))}
-          </select>
+            {({ close }) => (
+              <>
+                {STATUS_OPTIONS.map((s) => (
+                  <DropdownItem
+                    key={s}
+                    className="capitalize"
+                    onClick={() => {
+                      setStatusFilter(s);
+                      close();
+                    }}
+                  >
+                    {s === "" ? "All statuses" : s.replace("_", " ")}
+                  </DropdownItem>
+                ))}
+              </>
+            )}
+          </Dropdown>
         </div>
-        <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
-          + New task
-        </button>
+        <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
+          New task
+        </Button>
       </div>
 
       {isLoading && <LoadingSpinner />}
       <ErrorMessage error={error} />
 
-      {data && (
-        <div className="card overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id}>
-                  {hg.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="cursor-pointer whitespace-nowrap px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500"
-                      onClick={header.column.getToggleSortingHandler()}
-                    >
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {{ asc: " ▲", desc: " ▼" }[header.column.getIsSorted() as string] ?? ""}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {table.getRowModel().rows.map((row) => (
-                <tr key={row.id} className="hover:bg-slate-50">
-                  {row.getVisibleCells().map((cell) => (
-                    <td key={cell.id} className="whitespace-nowrap px-3 py-2">
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-              {table.getRowModel().rows.length === 0 && (
-                <tr>
-                  <td colSpan={columns.length} className="px-3 py-8 text-center text-slate-400">
-                    No tasks match.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+      {data && <DataTable table={table} emptyMessage="No tasks match." />}
 
       {showCreate && (
         <TaskFormModal

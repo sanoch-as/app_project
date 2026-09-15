@@ -1,6 +1,6 @@
 export function LoadingSpinner({ label = "Loading…" }: { label?: string }) {
   return (
-    <div className="flex items-center justify-center gap-2 py-10 text-sm text-slate-500">
+    <div className="flex items-center justify-center gap-2 py-10 text-sm text-jira-textSub">
       <svg
         className="h-4 w-4 animate-spin text-brand-600"
         viewBox="0 0 24 24"

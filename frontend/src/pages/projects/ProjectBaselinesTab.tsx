@@ -1,4 +1,6 @@
 import { useState, type FormEvent } from "react";
+import clsx from "clsx";
+import { Plus } from "lucide-react";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useAuthStore } from "@/store/authStore";
 import { useBaselines, useCreateBaseline } from "@/hooks/useBaselines";
@@ -6,6 +8,7 @@ import { useGantt } from "@/hooks/useTasks";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Modal } from "@/components/common/Modal";
+import { Button } from "@/components/common/Button";
 
 const currencyFormatter = new Intl.NumberFormat(undefined, {
   style: "currency",
@@ -41,11 +44,11 @@ export function ProjectBaselinesTab() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold text-slate-700">Baselines</h2>
+        <h2 className="text-sm font-semibold text-jira-text">Baselines</h2>
         {role === "admin" && (
-          <button type="button" className="btn-primary" onClick={() => setShowCreate(true)}>
-            + Save baseline
-          </button>
+          <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
+            Save baseline
+          </Button>
         )}
       </div>
 
@@ -53,7 +56,7 @@ export function ProjectBaselinesTab() {
       <ErrorMessage error={error} />
 
       {sortedBaselines.length === 0 ? (
-        <div className="card p-6 text-sm text-slate-500">
+        <div className="card p-6 text-sm text-jira-textSub">
           No baselines yet. {role === "admin" ? "Save one to establish planned value (PV)." : "Ask an admin to save one."}
         </div>
       ) : (
@@ -63,14 +66,15 @@ export function ProjectBaselinesTab() {
               <button
                 key={b.id}
                 onClick={() => setSelectedBaselineId(b.id)}
-                className={`rounded-md border px-3 py-1.5 text-sm ${
+                className={clsx(
+                  "rounded-md border px-3 py-1.5 text-sm",
                   (selected?.id ?? sortedBaselines[0].id) === b.id
-                    ? "border-brand-500 bg-brand-50 text-brand-700"
-                    : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-                }`}
+                    ? "border-brand-500 bg-jira-blueBadgeBg text-brand-700"
+                    : "border-jira-border bg-white text-jira-textSub hover:bg-jira-hover",
+                )}
               >
                 {b.name}
-                <span className="ml-1.5 text-xs text-slate-400">
+                <span className="ml-1.5 text-xs text-jira-textSub">
                   {new Date(b.created_at).toLocaleDateString()}
                 </span>
               </button>
@@ -79,9 +83,9 @@ export function ProjectBaselinesTab() {
 
           {selected && (
             <div className="card overflow-x-auto">
-              <table className="min-w-full divide-y divide-slate-200 text-sm">
-                <thead className="bg-slate-50">
-                  <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+              <table className="min-w-full divide-y divide-jira-border text-sm">
+                <thead className="bg-jira-panel">
+                  <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
                     <th className="px-3 py-2">Task</th>
                     <th className="px-3 py-2">Planned start</th>
                     <th className="px-3 py-2">Current start</th>
@@ -92,30 +96,30 @@ export function ProjectBaselinesTab() {
                     <th className="px-3 py-2">% Done</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-jira-borderSoft">
                   {selected.baseline_tasks.map((bt) => {
                     const current = taskById.get(bt.task_id);
                     const startSlip = current && current.start_date !== bt.planned_start_date;
                     const endSlip = current && current.end_date !== bt.planned_end_date;
                     const costOver = current && current.budgeted_cost > bt.planned_cost;
                     return (
-                      <tr key={bt.task_id}>
-                        <td className="px-3 py-2 font-medium text-slate-800">
+                      <tr key={bt.task_id} className="hover:bg-jira-hover">
+                        <td className="px-3 py-2 font-medium text-jira-text">
                           {current ? `${current.wbs_code} ${current.name}` : bt.task_id.slice(0, 8)}
                         </td>
-                        <td className="px-3 py-2">{bt.planned_start_date}</td>
-                        <td className={`px-3 py-2 ${startSlip ? "font-medium text-amber-700" : ""}`}>
+                        <td className="px-3 py-2 text-jira-textSub">{bt.planned_start_date}</td>
+                        <td className={`px-3 py-2 ${startSlip ? "font-medium text-jira-orange" : "text-jira-textSub"}`}>
                           {current?.start_date ?? "—"}
                         </td>
-                        <td className="px-3 py-2">{bt.planned_end_date}</td>
-                        <td className={`px-3 py-2 ${endSlip ? "font-medium text-amber-700" : ""}`}>
+                        <td className="px-3 py-2 text-jira-textSub">{bt.planned_end_date}</td>
+                        <td className={`px-3 py-2 ${endSlip ? "font-medium text-jira-orange" : "text-jira-textSub"}`}>
                           {current?.end_date ?? "—"}
                         </td>
-                        <td className="px-3 py-2">{currencyFormatter.format(bt.planned_cost)}</td>
-                        <td className={`px-3 py-2 ${costOver ? "font-medium text-red-700" : ""}`}>
+                        <td className="px-3 py-2 text-jira-textSub">{currencyFormatter.format(bt.planned_cost)}</td>
+                        <td className={`px-3 py-2 ${costOver ? "font-medium text-jira-red" : "text-jira-textSub"}`}>
                           {current ? currencyFormatter.format(current.budgeted_cost) : "—"}
                         </td>
-                        <td className="px-3 py-2">{current?.percent_complete ?? "—"}%</td>
+                        <td className="px-3 py-2 text-jira-textSub">{current?.percent_complete ?? "—"}%</td>
                       </tr>
                     );
                   })}
@@ -141,18 +145,18 @@ export function ProjectBaselinesTab() {
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-jira-textSub">
               Snapshots every task's current start/end date and budgeted cost. This becomes the
               new reference for planned value (PV) in the S-curve.
             </p>
             <ErrorMessage error={createBaseline.error} />
             <div className="flex justify-end gap-2">
-              <button type="button" className="btn-secondary" onClick={() => setShowCreate(false)}>
+              <Button variant="secondary" onClick={() => setShowCreate(false)}>
                 Cancel
-              </button>
-              <button type="submit" className="btn-primary" disabled={createBaseline.isPending}>
+              </Button>
+              <Button variant="primary" type="submit" loading={createBaseline.isPending}>
                 {createBaseline.isPending ? "Saving…" : "Save baseline"}
-              </button>
+              </Button>
             </div>
           </form>
         </Modal>

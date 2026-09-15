@@ -1,58 +1,60 @@
 import type { ProjectStatus, TaskPriority, TaskStatus } from "@/types/api";
 import clsx from "clsx";
 
-const projectStatusStyles: Record<ProjectStatus, string> = {
-  planning: "bg-slate-100 text-slate-700",
-  active: "bg-green-100 text-green-800",
-  on_hold: "bg-amber-100 text-amber-800",
-  completed: "bg-blue-100 text-blue-800",
-  cancelled: "bg-red-100 text-red-700",
+type Tone = "blue" | "green" | "gray" | "orange" | "red" | "purple";
+
+const toneClasses: Record<Tone, string> = {
+  blue: "bg-jira-blueBadgeBg text-jira-blueBadgeText",
+  green: "bg-jira-greenBadgeBg text-jira-greenBadgeText",
+  gray: "bg-jira-grayBadgeBg text-jira-grayBadgeText",
+  orange: "bg-orange-50 text-jira-orange",
+  red: "bg-red-50 text-jira-red",
+  purple: "bg-purple-50 text-jira-purple",
 };
 
-const taskStatusStyles: Record<TaskStatus, string> = {
-  not_started: "bg-slate-100 text-slate-700",
-  in_progress: "bg-blue-100 text-blue-800",
-  blocked: "bg-red-100 text-red-700",
-  completed: "bg-green-100 text-green-800",
+const projectStatusTone: Record<ProjectStatus, Tone> = {
+  planning: "gray",
+  active: "green",
+  on_hold: "orange",
+  completed: "blue",
+  cancelled: "red",
 };
 
-const priorityStyles: Record<TaskPriority, string> = {
-  low: "bg-slate-100 text-slate-600",
-  medium: "bg-blue-100 text-blue-700",
-  high: "bg-amber-100 text-amber-800",
-  critical: "bg-red-100 text-red-700",
+const taskStatusTone: Record<TaskStatus, Tone> = {
+  not_started: "gray",
+  in_progress: "blue",
+  blocked: "red",
+  completed: "green",
 };
 
-function Pill({ className, children }: { className: string; children: React.ReactNode }) {
-  return (
-    <span
-      className={clsx(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize",
-        className,
-      )}
-    >
-      {children}
-    </span>
-  );
+const priorityTone: Record<TaskPriority, Tone> = {
+  low: "gray",
+  medium: "blue",
+  high: "orange",
+  critical: "red",
+};
+
+export function Pill({ tone, children }: { tone: Tone; children: React.ReactNode }) {
+  return <span className={clsx("badge-pill", toneClasses[tone])}>{children}</span>;
 }
 
 export function ProjectStatusBadge({ status }: { status: ProjectStatus }) {
-  return <Pill className={projectStatusStyles[status]}>{status.replace("_", " ")}</Pill>;
+  return <Pill tone={projectStatusTone[status]}>{status.replace("_", " ")}</Pill>;
 }
 
 export function TaskStatusBadge({ status }: { status: TaskStatus }) {
-  return <Pill className={taskStatusStyles[status]}>{status.replace("_", " ")}</Pill>;
+  return <Pill tone={taskStatusTone[status]}>{status.replace("_", " ")}</Pill>;
 }
 
 export function PriorityBadge({ priority }: { priority: TaskPriority }) {
-  return <Pill className={priorityStyles[priority]}>{priority}</Pill>;
+  return <Pill tone={priorityTone[priority]}>{priority}</Pill>;
 }
 
 /** SPI/CPI read below 1.0 as behind schedule/over budget (red), >=1 as on/ahead (green). */
 export function IndexBadge({ label, value }: { label: string; value: number | null }) {
   if (value === null) {
     return (
-      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500">
+      <span className="badge-pill bg-jira-grayBadgeBg text-jira-textSub normal-case">
         {label}: n/a
       </span>
     );
@@ -60,10 +62,7 @@ export function IndexBadge({ label, value }: { label: string; value: number | nu
   const good = value >= 1;
   return (
     <span
-      className={clsx(
-        "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium",
-        good ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700",
-      )}
+      className={clsx("badge-pill normal-case", good ? toneClasses.green : toneClasses.red)}
       title={good ? "On/ahead of plan" : "Behind plan"}
     >
       {label}: {value.toFixed(2)}

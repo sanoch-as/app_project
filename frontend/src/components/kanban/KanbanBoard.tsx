@@ -1,7 +1,9 @@
 import { useState, type DragEvent } from "react";
 import clsx from "clsx";
+import { Diamond } from "lucide-react";
 import type { TaskRead, TaskStatus } from "@/types/api";
 import { PriorityBadge } from "@/components/common/Badge";
+import { Avatar } from "@/components/common/Avatar";
 
 interface KanbanBoardProps {
   tasks: TaskRead[];
@@ -19,6 +21,8 @@ const COLUMNS: { status: TaskStatus; label: string }[] = [
 /**
  * Native HTML5 drag-and-drop between columns (no DnD library — per the
  * "don't add unlisted dependencies" rule in the brief; see docs/DECISIONS.md).
+ * Hover/elevation styling here intentionally avoids `transform` so it can't
+ * interfere with native `dragstart` hit-testing.
  */
 export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardProps) {
   const [dragOverStatus, setDragOverStatus] = useState<TaskStatus | null>(null);
@@ -39,7 +43,7 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
   }
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {COLUMNS.map((column) => {
         const columnTasks = tasks.filter((t) => t.status === column.status);
         return (
@@ -52,15 +56,17 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
             onDragLeave={() => setDragOverStatus((s) => (s === column.status ? null : s))}
             onDrop={(e) => handleDrop(e, column.status)}
             className={clsx(
-              "min-h-[16rem] rounded-lg border-2 border-dashed p-2 transition-colors",
+              "min-h-[16rem] rounded-lg border p-2 transition-colors",
               dragOverStatus === column.status
-                ? "border-brand-400 bg-brand-50"
-                : "border-transparent bg-slate-100",
+                ? "border-brand-400 bg-jira-blueBadgeBg"
+                : "border-transparent bg-jira-panel",
             )}
           >
-            <div className="mb-2 flex items-center justify-between px-1">
-              <h3 className="text-sm font-semibold text-slate-700">{column.label}</h3>
-              <span className="rounded-full bg-white px-2 py-0.5 text-xs text-slate-500 shadow-sm">
+            <div className="mb-2 flex items-center justify-between px-1.5 py-1">
+              <h3 className="text-xs font-bold uppercase tracking-wide text-jira-textSub">
+                {column.label}
+              </h3>
+              <span className="rounded-full bg-white px-2 py-0.5 text-xs font-medium text-jira-textSub shadow-jira-sm">
                 {columnTasks.length}
               </span>
             </div>
@@ -72,35 +78,44 @@ export function KanbanBoard({ tasks, onStatusChange, onTaskClick }: KanbanBoardP
                   onDragStart={(e) => handleDragStart(e, task.id)}
                   onClick={() => onTaskClick(task.id)}
                   className={clsx(
-                    "cursor-grab card p-3 text-sm hover:shadow-md active:cursor-grabbing",
-                    task.is_critical && "border-red-300",
+                    "cursor-grab rounded-lg border bg-white p-2.5 text-sm shadow-jira-sm hover:border-brand-300 active:cursor-grabbing",
+                    task.is_critical ? "border-jira-red/40" : "border-jira-borderSoft",
                   )}
                 >
-                  <div className="mb-1 flex items-start justify-between gap-2">
-                    <span className="font-medium text-slate-800">{task.name}</span>
-                    {task.is_milestone && <span title="Milestone">🔶</span>}
+                  <div className="mb-2 flex items-start gap-1.5 text-[13.5px] font-medium leading-snug text-jira-text">
+                    {task.is_milestone && (
+                      <Diamond
+                        className="mt-0.5 h-3 w-3 shrink-0 fill-jira-orange text-jira-orange"
+                        aria-label="Milestone"
+                      />
+                    )}
+                    <span>{task.name}</span>
                   </div>
-                  <div className="mb-2 text-xs text-slate-400">{task.wbs_code}</div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <span className="rounded bg-jira-blueBadgeBg px-1.5 py-0.5 font-mono text-[11px] font-semibold text-jira-blueBadgeText">
+                      {task.wbs_code}
+                    </span>
+                    <span className="text-xs text-jira-textSub">{task.percent_complete}%</span>
+                  </div>
                   <div className="flex items-center justify-between">
                     <PriorityBadge priority={task.priority} />
-                    <span className="text-xs text-slate-500">{task.percent_complete}%</span>
+                    {task.assignees.length > 0 && (
+                      <div className="flex -space-x-1.5">
+                        {task.assignees.slice(0, 3).map((a) => (
+                          <Avatar
+                            key={a.user.id}
+                            name={a.user.full_name}
+                            size="sm"
+                            className="ring-2 ring-white"
+                          />
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {task.assignees.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {task.assignees.map((a) => (
-                        <span
-                          key={a.user.id}
-                          className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-slate-600"
-                        >
-                          {a.user.full_name}
-                        </span>
-                      ))}
-                    </div>
-                  )}
                 </div>
               ))}
               {columnTasks.length === 0 && (
-                <div className="rounded border border-dashed border-slate-200 p-4 text-center text-xs text-slate-400">
+                <div className="rounded border border-dashed border-jira-border p-4 text-center text-xs text-jira-textSub">
                   Drop tasks here
                 </div>
               )}

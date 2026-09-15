@@ -20,11 +20,14 @@ export function RegisterPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-jira-panel px-4">
       <div className="w-full max-w-sm">
         <div className="mb-6 text-center">
-          <div className="text-2xl font-bold text-brand-700">PM Platform</div>
-          <p className="mt-1 text-sm text-slate-500">
+          <span className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-brand-600 text-lg font-bold text-white">
+            P
+          </span>
+          <div className="text-xl font-bold text-jira-text">PM Platform</div>
+          <p className="mt-1 text-sm text-jira-textSub">
             Create your organization &amp; admin account
           </p>
         </div>
@@ -81,14 +84,14 @@ export function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
-            <p className="mt-1 text-xs text-slate-400">At least 8 characters.</p>
+            <p className="mt-1 text-xs text-jira-textSub">At least 8 characters.</p>
           </div>
           <ErrorMessage error={register.error} />
           <button type="submit" className="btn-primary w-full" disabled={register.isPending}>
             {register.isPending ? "Creating…" : "Create organization"}
           </button>
         </form>
-        <p className="mt-4 text-center text-sm text-slate-500">
+        <p className="mt-4 text-center text-sm text-jira-textSub">
           Already have an account?{" "}
           <Link to="/login" className="font-medium text-brand-600 hover:underline">
             Sign in

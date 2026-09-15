@@ -1,9 +1,12 @@
 import { useState, type FormEvent } from "react";
+import { UserPlus } from "lucide-react";
 import { useInviteUser, useUpdateUser, useUsers } from "@/hooks/useUsers";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Modal } from "@/components/common/Modal";
 import { AdminOnly } from "@/components/common/ProtectedRoute";
+import { Avatar } from "@/components/common/Avatar";
+import { Button } from "@/components/common/Button";
 import type { UserRead, UserRole } from "@/types/api";
 
 export function UsersSettingsPage() {
@@ -24,12 +27,12 @@ function UsersSettingsContent() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-slate-900">Organization users</h1>
-          <p className="text-sm text-slate-500">Manage users, roles and hourly cost rates.</p>
+          <h1 className="text-xl font-semibold text-jira-text">Organization users</h1>
+          <p className="text-sm text-jira-textSub">Manage users, roles and hourly cost rates.</p>
         </div>
-        <button type="button" className="btn-primary" onClick={() => setShowInvite(true)}>
-          + Invite user
-        </button>
+        <Button variant="primary" iconLeft={UserPlus} onClick={() => setShowInvite(true)}>
+          Invite user
+        </Button>
       </div>
 
       {isLoading && <LoadingSpinner />}
@@ -37,9 +40,9 @@ function UsersSettingsContent() {
 
       {data && (
         <div className="card overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-xs uppercase tracking-wide text-slate-500">
+          <table className="min-w-full divide-y divide-jira-border text-sm">
+            <thead className="bg-jira-panel">
+              <tr className="text-left text-xs font-bold uppercase tracking-wide text-jira-textSub">
                 <th className="px-4 py-2">Name</th>
                 <th className="px-4 py-2">Email</th>
                 <th className="px-4 py-2">Role</th>
@@ -48,14 +51,19 @@ function UsersSettingsContent() {
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100">
+            <tbody className="divide-y divide-jira-borderSoft">
               {data.items.map((u) => (
-                <tr key={u.id}>
-                  <td className="px-4 py-2 font-medium text-slate-800">{u.full_name}</td>
-                  <td className="px-4 py-2 text-slate-500">{u.email}</td>
-                  <td className="px-4 py-2 capitalize">{u.role}</td>
-                  <td className="px-4 py-2">{u.cost_per_hour ?? "—"}</td>
-                  <td className="px-4 py-2">{u.is_active ? "Yes" : "No"}</td>
+                <tr key={u.id} className="hover:bg-jira-hover">
+                  <td className="px-4 py-2">
+                    <div className="flex items-center gap-2.5">
+                      <Avatar name={u.full_name} size="sm" />
+                      <span className="font-medium text-jira-text">{u.full_name}</span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-2 text-jira-textSub">{u.email}</td>
+                  <td className="px-4 py-2 capitalize text-jira-text">{u.role}</td>
+                  <td className="px-4 py-2 text-jira-text">{u.cost_per_hour ?? "—"}</td>
+                  <td className="px-4 py-2 text-jira-text">{u.is_active ? "Yes" : "No"}</td>
                   <td className="px-4 py-2 text-right">
                     <button
                       type="button"
@@ -113,7 +121,7 @@ function InviteUserModal({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Invite user" onClose={onClose}>
       <form onSubmit={handleSubmit} className="space-y-3">
-        <p className="text-xs text-slate-400">
+        <p className="text-xs text-jira-textSub">
           There is no email delivery in v1 — this creates the account directly with the password
           you set here; share it with the person out of band.
         </p>
@@ -225,7 +233,7 @@ function EditUserModal({
             />
           </div>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-jira-text">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} />
           Active
         </label>
