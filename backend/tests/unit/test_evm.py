@@ -8,6 +8,8 @@ from app.services.evm import (
     compute_ev,
     compute_evm,
     compute_pv,
+    planned_percent_complete_by_task,
+    planned_percent_complete_project,
 )
 
 TASK_A = uuid.uuid4()
@@ -77,3 +79,44 @@ def test_full_evm_calculation():
     assert metrics.pv == 500
     assert metrics.spi == 1.0
     assert metrics.cpi == 1.25
+
+
+def test_planned_percent_complete_by_task_zero_before_start():
+    baseline_tasks = [BaselineTaskEVMInput(TASK_A, date(2026, 9, 14), date(2026, 9, 18), 1000)]
+    result = planned_percent_complete_by_task(baseline_tasks, date(2026, 9, 10))
+    assert result == {TASK_A: 0.0}
+
+
+def test_planned_percent_complete_by_task_full_at_or_after_end():
+    baseline_tasks = [BaselineTaskEVMInput(TASK_A, date(2026, 9, 14), date(2026, 9, 18), 1000)]
+    assert planned_percent_complete_by_task(baseline_tasks, date(2026, 9, 18)) == {TASK_A: 100.0}
+    assert planned_percent_complete_by_task(baseline_tasks, date(2026, 9, 30)) == {TASK_A: 100.0}
+
+
+def test_planned_percent_complete_by_task_prorates_linearly():
+    # Same 5-calendar-day span as the PV prorating test: day 3 of 5 -> 60%.
+    baseline_tasks = [BaselineTaskEVMInput(TASK_A, date(2026, 9, 14), date(2026, 9, 18), 1000)]
+    result = planned_percent_complete_by_task(baseline_tasks, date(2026, 9, 16))
+    assert result == {TASK_A: 60.0}
+
+
+def test_planned_percent_complete_by_task_is_defined_even_with_zero_planned_cost():
+    baseline_tasks = [BaselineTaskEVMInput(TASK_A, date(2026, 9, 14), date(2026, 9, 18), 0)]
+    result = planned_percent_complete_by_task(baseline_tasks, date(2026, 9, 16))
+    assert result == {TASK_A: 60.0}
+
+
+def test_planned_percent_complete_project_none_without_baseline():
+    assert planned_percent_complete_project([], date(2026, 9, 16)) is None
+
+
+def test_planned_percent_complete_project_is_cost_weighted():
+    task_b = uuid.uuid4()
+    baseline_tasks = [
+        # Fully elapsed by the status date -> 100% of its cost counts.
+        BaselineTaskEVMInput(TASK_A, date(2026, 9, 1), date(2026, 9, 5), 1000),
+        # Not started yet by the status date -> 0% of its cost counts.
+        BaselineTaskEVMInput(task_b, date(2026, 9, 20), date(2026, 9, 25), 3000),
+    ]
+    result = planned_percent_complete_project(baseline_tasks, date(2026, 9, 16))
+    assert result == 1000 / 4000 * 100

@@ -120,6 +120,76 @@ async def test_recalculate_persists_a_progress_snapshot(client: AsyncClient):
     assert "status_date" in response.json()
 
 
+async def test_projected_progress_without_baseline_has_null_planned_percent(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    await _create_task(client, admin_token, project_id)
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-09-10"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["baseline_id"] is None
+    assert body["project_planned_percent_complete"] is None
+    assert body["tasks"][0]["planned_percent_complete"] == 0
+
+
+async def test_projected_progress_prorates_by_status_date(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    task = await _create_task(client, admin_token, project_id)
+
+    await client.post(
+        f"/api/v1/projects/{project_id}/baselines",
+        json={"name": "Plan A"},
+        headers=auth_header(admin_token),
+    )
+    await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"percent_complete": 40},
+        headers=auth_header(admin_token),
+    )
+
+    before_start = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-08-01"},
+        headers=auth_header(admin_token),
+    )
+    assert before_start.status_code == 200, before_start.text
+    before_body = before_start.json()
+    assert before_body["baseline_id"] is not None
+    assert before_body["project_planned_percent_complete"] == 0
+    assert before_body["tasks"][0]["planned_percent_complete"] == 0
+    assert before_body["tasks"][0]["actual_percent_complete"] == 40
+
+    after_end = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-12-31"},
+        headers=auth_header(admin_token),
+    )
+    assert after_end.status_code == 200
+    after_body = after_end.json()
+    assert after_body["project_planned_percent_complete"] == 100
+    assert after_body["tasks"][0]["planned_percent_complete"] == 100
+    assert after_body["tasks"][0]["actual_percent_complete"] == 40
+
+
+async def test_projected_progress_requires_status_date(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected", headers=auth_header(admin_token)
+    )
+    assert response.status_code == 422
+
+
 async def test_recalculate_all_requires_cron_secret(client: AsyncClient):
     unauthorized = await client.post("/api/v1/progress/recalculate-all")
     assert unauthorized.status_code == 401

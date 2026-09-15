@@ -1,10 +1,12 @@
 import uuid
+from dataclasses import dataclass
 from datetime import UTC, date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
 from app.models.project import Project
+from app.models.task import Task
 from app.repositories import (
     baseline_repository,
     progress_snapshot_repository,
@@ -12,7 +14,15 @@ from app.repositories import (
     task_repository,
     worklog_repository,
 )
-from app.services.evm import BaselineTaskEVMInput, EVMMetrics, TaskEVMInput, compute_evm
+from app.services.evm import (
+    BaselineTaskEVMInput,
+    EVMMetrics,
+    TaskEVMInput,
+    compute_ev,
+    compute_evm,
+    planned_percent_complete_by_task,
+    planned_percent_complete_project,
+)
 from app.services.scurve import SCurvePoint, build_weekly_scurve
 
 logger = get_logger(__name__)
@@ -22,9 +32,28 @@ def _today() -> date:
     return datetime.now(UTC).date()
 
 
+@dataclass(frozen=True)
+class TaskProjectedProgress:
+    task: Task
+    planned_start_date: date | None
+    planned_end_date: date | None
+    planned_percent_complete: float
+    actual_percent_complete: float
+
+
+@dataclass(frozen=True)
+class ProjectedProgress:
+    status_date: date
+    baseline_id: uuid.UUID | None
+    baseline_name: str | None
+    project_planned_percent_complete: float | None
+    project_actual_percent_complete: float
+    tasks: list[TaskProjectedProgress]
+
+
 async def _load_evm_inputs(
     db: AsyncSession, project_id: uuid.UUID
-) -> tuple[list[TaskEVMInput], list[BaselineTaskEVMInput], list[tuple[date, float]]]:
+) -> tuple[list[Task], list[TaskEVMInput], list[BaselineTaskEVMInput], list[tuple[date, float]]]:
     # SQLAlchemy returns NUMERIC columns as Decimal; services/evm.py is pure
     # Python and works in plain floats, so convert at this ORM boundary.
     tasks = await task_repository.list_all_by_project(db, project_id)
@@ -62,26 +91,70 @@ async def _load_evm_inputs(
             affected_worklogs=missing_rate_count,
         )
 
-    return task_inputs, baseline_inputs, worklog_costs
+    return tasks, task_inputs, baseline_inputs, worklog_costs
 
 
 async def get_current_progress(
     db: AsyncSession, project: Project
 ) -> tuple[EVMMetrics, list[SCurvePoint]]:
-    tasks, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
+    _, task_inputs, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
     today = _today()
-    current = compute_evm(tasks, baseline_tasks, worklog_costs, today)
-    curve = build_weekly_scurve(tasks, baseline_tasks, worklog_costs, today)
+    current = compute_evm(task_inputs, baseline_tasks, worklog_costs, today)
+    curve = build_weekly_scurve(task_inputs, baseline_tasks, worklog_costs, today)
     return current, curve
 
 
 async def recalculate_and_store(db: AsyncSession, project: Project) -> EVMMetrics:
-    tasks, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
+    _, task_inputs, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
     today = _today()
-    metrics = compute_evm(tasks, baseline_tasks, worklog_costs, today)
+    metrics = compute_evm(task_inputs, baseline_tasks, worklog_costs, today)
     await progress_snapshot_repository.upsert(db, project.id, today, metrics)
     await db.commit()
     return metrics
+
+
+async def get_projected_progress(
+    db: AsyncSession, project: Project, status_date: date
+) -> ProjectedProgress:
+    """Baseline-derived "should be X% done by status_date" projection — MS Project's
+    Status Date + baseline. Read-only/live, same as get_current_progress (ADR-013)."""
+    tasks, task_inputs, baseline_tasks, _ = await _load_evm_inputs(db, project.id)
+    active_baseline = await baseline_repository.get_active_baseline(db, project.id)
+
+    planned_by_task = planned_percent_complete_by_task(baseline_tasks, status_date)
+    project_planned = planned_percent_complete_project(baseline_tasks, status_date)
+    baseline_dates_by_task = {bt.task_id: bt for bt in baseline_tasks}
+
+    total_budgeted = sum(ti.budgeted_cost for ti in task_inputs)
+    project_actual = (compute_ev(task_inputs) / total_budgeted * 100) if total_budgeted else 0.0
+
+    task_rows = [
+        TaskProjectedProgress(
+            task=t,
+            planned_start_date=(
+                baseline_dates_by_task[t.id].planned_start_date
+                if t.id in baseline_dates_by_task
+                else None
+            ),
+            planned_end_date=(
+                baseline_dates_by_task[t.id].planned_end_date
+                if t.id in baseline_dates_by_task
+                else None
+            ),
+            planned_percent_complete=planned_by_task.get(t.id, 0.0),
+            actual_percent_complete=float(t.percent_complete),
+        )
+        for t in tasks
+    ]
+
+    return ProjectedProgress(
+        status_date=status_date,
+        baseline_id=active_baseline.id if active_baseline else None,
+        baseline_name=active_baseline.name if active_baseline else None,
+        project_planned_percent_complete=project_planned,
+        project_actual_percent_complete=project_actual,
+        tasks=task_rows,
+    )
 
 
 async def recalculate_all_active(db: AsyncSession) -> int:

@@ -33,16 +33,22 @@ class EVMMetrics:
     cpi: float | None
 
 
-def _prorated_planned_value(
-    planned_start: date, planned_end: date, planned_cost: float, status_date: date
-) -> float:
+def _prorated_fraction(planned_start: date, planned_end: date, status_date: date) -> float:
+    """Fraction (0.0-1.0) of a baselined task's planned window elapsed by status_date —
+    linear between planned_start_date and planned_end_date, clamped at both ends."""
     if status_date < planned_start:
         return 0.0
     if status_date >= planned_end:
-        return planned_cost
+        return 1.0
     total_days = (planned_end - planned_start).days + 1
     elapsed_days = (status_date - planned_start).days + 1
-    return planned_cost * (elapsed_days / total_days)
+    return elapsed_days / total_days
+
+
+def _prorated_planned_value(
+    planned_start: date, planned_end: date, planned_cost: float, status_date: date
+) -> float:
+    return planned_cost * _prorated_fraction(planned_start, planned_end, status_date)
 
 
 def compute_pv(baseline_tasks: list[BaselineTaskEVMInput], status_date: date) -> float:
@@ -52,6 +58,32 @@ def compute_pv(baseline_tasks: list[BaselineTaskEVMInput], status_date: date) ->
         )
         for bt in baseline_tasks
     )
+
+
+def planned_percent_complete_by_task(
+    baseline_tasks: list[BaselineTaskEVMInput], status_date: date
+) -> dict[uuid.UUID, float]:
+    """MS Project's "baseline % complete at a status date", per task: how far along
+    each task's planned schedule *should* be by status_date, 0-100. Pure date
+    prorating (no cost weighting), so it's defined even when planned_cost is 0 —
+    see planned_percent_complete_project for the cost-weighted project aggregate."""
+    return {
+        bt.task_id: _prorated_fraction(bt.planned_start_date, bt.planned_end_date, status_date)
+        * 100
+        for bt in baseline_tasks
+    }
+
+
+def planned_percent_complete_project(
+    baseline_tasks: list[BaselineTaskEVMInput], status_date: date
+) -> float | None:
+    """Cost-weighted project-level planned % complete at status_date — consistent with
+    compute_pv's weighting. None when there's no baseline (or its total planned cost is
+    0), same "not applicable" convention as spi/cpi in compute_evm."""
+    total_planned_cost = sum(bt.planned_cost for bt in baseline_tasks)
+    if not total_planned_cost:
+        return None
+    return compute_pv(baseline_tasks, status_date) / total_planned_cost * 100
 
 
 def compute_ev(tasks: list[TaskEVMInput]) -> float:

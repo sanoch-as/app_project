@@ -12,6 +12,7 @@ import { ProjectTasksTab } from "@/pages/projects/ProjectTasksTab";
 import { ProjectKanbanTab } from "@/pages/projects/ProjectKanbanTab";
 import { ProjectCalendarTab } from "@/pages/projects/ProjectCalendarTab";
 import { ProjectBaselinesTab } from "@/pages/projects/ProjectBaselinesTab";
+import { ProjectForecastTab } from "@/pages/projects/ProjectForecastTab";
 import { ProjectWorklogsTab } from "@/pages/projects/ProjectWorklogsTab";
 import { ProjectMembersTab } from "@/pages/projects/ProjectMembersTab";
 import { ProjectReportsTab } from "@/pages/projects/ProjectReportsTab";
@@ -42,6 +43,7 @@ export default function App() {
           <Route path="kanban" element={<ProjectKanbanTab />} />
           <Route path="calendar" element={<ProjectCalendarTab />} />
           <Route path="baselines" element={<ProjectBaselinesTab />} />
+          <Route path="forecast" element={<ProjectForecastTab />} />
           <Route path="worklogs" element={<ProjectWorklogsTab />} />
           <Route path="members" element={<ProjectMembersTab />} />
           <Route path="reports" element={<ProjectReportsTab />} />

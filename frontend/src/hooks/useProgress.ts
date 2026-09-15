@@ -9,6 +9,14 @@ export function useProgress(projectId: string | undefined) {
   });
 }
 
+export function useProjectedProgress(projectId: string | undefined, statusDate: string) {
+  return useQuery({
+    queryKey: ["projects", projectId, "progress", "projected", statusDate],
+    queryFn: () => progressApi.getProjected(projectId!, statusDate),
+    enabled: Boolean(projectId && statusDate),
+  });
+}
+
 export function useRecalculateProgress(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({

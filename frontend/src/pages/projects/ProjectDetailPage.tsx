@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams } from "react-router-dom";
 import clsx from "clsx";
 import {
   Calendar,
+  CalendarClock,
   FileBarChart2,
   GanttChartSquare,
   KanbanSquare,
@@ -28,6 +29,7 @@ const TABS = [
   { to: "kanban", label: "Kanban", icon: KanbanSquare },
   { to: "calendar", label: "Calendar", icon: Calendar },
   { to: "baselines", label: "Baselines", icon: Milestone },
+  { to: "forecast", label: "Forecast", icon: CalendarClock },
   { to: "worklogs", label: "Worklogs", icon: Clock },
   { to: "members", label: "Members", icon: Users },
   { to: "reports", label: "Reports", icon: FileBarChart2 },

@@ -336,6 +336,26 @@ export interface RecalculateResponse {
   current: EVMMetricsRead;
 }
 
+export interface TaskPlannedProgressRead {
+  task_id: string;
+  wbs_code: string;
+  name: string;
+  status: TaskStatus;
+  planned_start_date: string | null;
+  planned_end_date: string | null;
+  planned_percent_complete: number;
+  actual_percent_complete: number;
+}
+
+export interface ProjectedProgressResponse {
+  status_date: string;
+  baseline_id: string | null;
+  baseline_name: string | null;
+  project_planned_percent_complete: number | null;
+  project_actual_percent_complete: number;
+  tasks: TaskPlannedProgressRead[];
+}
+
 // ---------------------------------------------------------------------------
 // Dashboards
 // ---------------------------------------------------------------------------
