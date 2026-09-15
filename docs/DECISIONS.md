@@ -112,7 +112,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-011: `services/` and `repositories/` contain more files than the five explicitly named in section 3
+## ADR-010: `services/` and `repositories/` contain more files than the five explicitly named in section 3
 
 **Context**: Section 3's folder tree bullets five `services/` files (`auth_service.py`, `critical_path.py`, `scheduler.py`, `evm.py`, `scurve.py`) and gives `repositories/` no bulleted list at all, just the comment "capa de acceso a datos (queries)". Every entity (projects, tasks, dependencies, baselines, worklogs) still needs data-access queries and, in several cases (WBS numbering, dependency-cycle validation before insert, permission checks tied to project membership), real orchestration logic beyond a single-table CRUD call.
 
@@ -124,7 +124,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-012: `GET /organizations/me` added — a minimal read endpoint not listed in section 7
+## ADR-011: `GET /organizations/me` added — a minimal read endpoint not listed in section 7
 
 **Context**: Section 3 requires `api/v1/endpoints/organizations.py` to exist, but section 7's endpoint list has no `/organizations/*` routes at all.
 
@@ -136,7 +136,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-015: Task scheduling convention — start date + duration in, end date computed; WBS codes auto-numbered
+## ADR-012: Task scheduling convention — start date + duration in, end date computed; WBS codes auto-numbered
 
 **Context**: The `tasks` table (section 5) has `start_date`, `end_date`, and `duration_days` as three separate columns, but the spec does not say which are user input versus derived, nor how `wbs_code` gets assigned. This is exactly the kind of ambiguity section 0 rule 1 asks to resolve with the industry-standard convention.
 
@@ -151,14 +151,14 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-018: EVM/S-curve computation design — live-computed reads, `progress_snapshots` as the cron's historical log only
+## ADR-013: EVM/S-curve computation design — live-computed reads, `progress_snapshots` as the cron's historical log only
 
 **Context**: Section 7 gives exactly one read endpoint for progress (`GET /projects/{id}/progress`) alongside two write-only recompute endpoints (`POST .../progress/recalculate`, `POST /progress/recalculate-all`). Section 4.1 point 20 says `progress_snapshots` stores a "snapshot histórico... recalculado por un Vercel Cron Job diario + endpoint on-demand," but never says the read endpoint has to source its response from that table. Meanwhile the Definition of Done requires the S-curve to "update when hours are logged or % complete changes" — i.e. it must never look stale.
 
 **Decision**:
 - `GET /projects/{id}/progress` always computes fresh, live numbers (`services/evm.py` + `services/scurve.py`) from the current `tasks`/`baseline_tasks`/`worklogs` — it never reads `progress_snapshots`. This is what makes it react instantly to a new worklog or a `percent_complete` edit, satisfying the DoD line above.
 - `progress_snapshots` is written only by the two recompute endpoints (the daily cron and the manual "recalculate now" button), each call upserting exactly one row for `(project_id, today)`. It exists as a historical trend log outside what the spec's section 7 endpoint set otherwise exposes — nothing currently reads it back, but it is populated exactly as section 5 describes, ready for a future trend-over-time report.
-- **PV** at a status date `t`: for each task, prorate its baseline (`baseline_tasks` of the *active* baseline — ADR-017) `planned_cost` linearly between `planned_start_date` and `planned_end_date` (0% before the window, 100% at/after `planned_end_date`), then sum across tasks. If a project has no baseline yet, PV is `0` for every task (there is nothing to compare against — this is a real state, not an error, and is surfaced by `SPI` coming back `null`).
+- **PV** at a status date `t`: for each task, prorate its baseline (`baseline_tasks` of the *active* baseline — ADR-014) `planned_cost` linearly between `planned_start_date` and `planned_end_date` (0% before the window, 100% at/after `planned_end_date`), then sum across tasks. If a project has no baseline yet, PV is `0` for every task (there is nothing to compare against — this is a real state, not an error, and is surfaced by `SPI` coming back `null`).
 - **EV** at any status date: `sum((percent_complete / 100) * budgeted_cost)` over all tasks, using each task's *current* `percent_complete` — per section 6.3's own words, "el valor actual si t = hoy," and no percent-complete history table exists to do better for `t != hoy` (see the "v1 stand-in" note this implies in `docs/BACKLOG.md`). Concretely: EV is the same number regardless of which date it's evaluated at, including every point along the S-curve. PV and AC still vary by week (they're schedule- and worklog-date-driven respectively), so `SPI`/`CPI` still produce a meaningful, moving curve — only the raw EV line itself is flat.
 - **AC** at a status date `t`: `sum(hours * cost_per_hour)` over every worklog on the project's tasks with `work_date <= t`; a user with a null `cost_per_hour` contributes `0` and triggers a `structlog` warning (never blocks the calculation) — exactly as section 6.3 specifies.
 - **S-curve checkpoints**: one point per week, from the active baseline's earliest `planned_start_date` to its latest `planned_end_date` inclusive (if there's no baseline, the curve is empty — there's nothing to plot). `PV` at each checkpoint uses that checkpoint's real date (it's purely schedule-derived, so future checkpoints are fully known in advance); `AC` (and therefore `CPI`) at a checkpoint clamps its status date to `min(checkpoint, today)`, so checkpoints beyond today show today's actual cost held flat rather than fabricating future actuals.
@@ -169,7 +169,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-017: The "active baseline" for EVM is simply the most recently created one
+## ADR-014: The "active baseline" for EVM is simply the most recently created one
 
 **Context**: Section 6.3 computes PV "desde `baseline_tasks` de la baseline activa", but section 5's `baselines` table has no `is_active`/`is_current` flag, and section 4.1 point 14 explicitly allows multiple historical baselines per project.
 
@@ -181,7 +181,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-016: Dependency constraints follow section 6.1's formula literally — `FS` lag 0 permits a same-day start
+## ADR-015: Dependency constraints follow section 6.1's formula literally — `FS` lag 0 permits a same-day start
 
 **Context**: Section 6.1 gives the CPM forward-pass formula explicitly: "FS: `EF_predecessor + lag`; SS: `ES_predecessor + lag`; etc." Many scheduling tools (MS Project included, in some configurations) treat `FS` with lag 0 as requiring the successor to start the *next* working period after the predecessor finishes, i.e. an implicit "+1". The spec's own formula has no such implicit offset.
 
@@ -193,7 +193,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-014: `bcrypt` pinned to `4.0.1`, not the newest release
+## ADR-016: `bcrypt` pinned to `4.0.1`, not the newest release
 
 **Context**: `passlib` 1.7.4 (the version required by section 2, and the newest one that exists — the project has been unmaintained since 2020) runs a self-test the first time it hashes/verifies a password, to detect a historical "wraparound bug" in some bcrypt builds. That self-test assumes bcrypt silently truncates secrets longer than 72 bytes. Starting with `bcrypt` 4.1, the `bcrypt` package raises `ValueError` on oversized secrets instead of truncating — which makes passlib's own self-test crash with `ValueError: password cannot be longer than 72 bytes`, on every single hash/verify call, independent of the actual password used by this app (none of which are anywhere near 72 bytes). This reproduced identically with `bcrypt` 5.0.0 (the version that installs by default on Python 3.14) and is a known upstream incompatibility, not a bug in this codebase.
 
@@ -205,7 +205,7 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
-## ADR-013: `docker compose` used only for local Postgres, never for running the app
+## ADR-017: `docker compose` used only for local Postgres, never for running the app
 
 **Context**: Section 2/12 forbid Docker in production; Vercel builds/runs the app directly.
 

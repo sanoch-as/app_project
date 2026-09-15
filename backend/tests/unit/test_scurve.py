@@ -48,4 +48,4 @@ def test_actuals_are_clamped_at_today_for_future_checkpoints():
     assert late_checkpoints  # sanity: there are future checkpoints to check
     for point in late_checkpoints:
         assert point.metrics.ac == 300.0  # held flat, not fabricated forward
-        assert point.metrics.ev == 400.0  # EV is always "current" (ADR-018)
+        assert point.metrics.ev == 400.0  # EV is always "current" (ADR-013)

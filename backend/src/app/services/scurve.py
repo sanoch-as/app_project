@@ -22,7 +22,7 @@ def build_weekly_scurve(
 ) -> list[SCurvePoint]:
     """One point per week from the baseline's earliest planned start to its
     latest planned end (inclusive). Empty if there's no baseline — there is
-    nothing to plot a schedule-derived curve against (ADR-018)."""
+    nothing to plot a schedule-derived curve against (ADR-013)."""
     if not baseline_tasks:
         return []
 

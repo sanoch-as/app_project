@@ -1,6 +1,6 @@
 """Earned Value Management — spec section 6.3. Pure, DB-free computation:
 callers (services/progress_service.py) load a project's tasks, active
-baseline, and worklog costs, then call `compute_evm`. See ADR-018 for the
+baseline, and worklog costs, then call `compute_evm`. See ADR-013 for the
 design decisions this follows (why EV doesn't vary by status date, how PV
 is prorated, etc.)."""
 
@@ -55,7 +55,7 @@ def compute_pv(baseline_tasks: list[BaselineTaskEVMInput], status_date: date) ->
 
 
 def compute_ev(tasks: list[TaskEVMInput]) -> float:
-    """Always the *current* value — see ADR-018 (no percent_complete history table)."""
+    """Always the *current* value — see ADR-013 (no percent_complete history table)."""
     return sum((task.percent_complete / 100) * task.budgeted_cost for task in tasks)
 
 

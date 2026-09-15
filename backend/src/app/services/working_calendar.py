@@ -1,7 +1,7 @@
 """Basic project working calendar (spec section 4.1 point 5): `working_days_per_week`
 working days starting Monday, plus an explicit holiday list. Shared by task
 scheduling (this phase) and the CPM engine (services/critical_path.py,
-services/scheduler.py) so both agree on what a "working day" is. See ADR-015."""
+services/scheduler.py) so both agree on what a "working day" is. See ADR-012."""
 
 from dataclasses import dataclass
 from datetime import date, timedelta
@@ -14,7 +14,7 @@ class WorkingCalendar:
 
     def is_working_day(self, day: date) -> bool:
         # date.weekday(): Monday=0 ... Sunday=6. The first N weekdays (Mon-first)
-        # are working days — see ADR-015 for why a count, not a weekday mask.
+        # are working days — see ADR-012 for why a count, not a weekday mask.
         if day.weekday() >= self.working_days_per_week:
             return False
         return day not in self.holidays

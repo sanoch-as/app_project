@@ -135,7 +135,7 @@ async def get_holidays_by_project_ids(
 
 
 async def set_holidays(db: AsyncSession, project_id: uuid.UUID, holidays: list[date]) -> None:
-    """Full-replace semantics — see docs/DECISIONS.md ADR-015. There is no
+    """Full-replace semantics — see docs/DECISIONS.md ADR-012. There is no
     dedicated holidays endpoint (section 7 doesn't list one); it's managed as
     part of `PATCH /projects/{id}`."""
     await db.execute(sa_delete(ProjectHoliday).where(ProjectHoliday.project_id == project_id))

@@ -50,7 +50,7 @@ Per `prompt-claude-code-plataforma-pm.md` section 4.2. Nothing below is implemen
 - "What-if" scenario planning.
 
 ## Known v1 modeling limits (not full features, but documented simplifications)
-- **No `percent_complete` history**: EV is always computed from each task's *current* `percent_complete`, at every point on the S-curve — including historical weeks (see ADR-018). A `task_progress_history` table (task_id, as_of_date, percent_complete) would let EV vary correctly by week; not built for v1 since section 5's data model doesn't include it and adding it wasn't asked for.
+- **No `percent_complete` history**: EV is always computed from each task's *current* `percent_complete`, at every point on the S-curve — including historical weeks (see ADR-013). A `task_progress_history` table (task_id, as_of_date, percent_complete) would let EV vary correctly by week; not built for v1 since section 5's data model doesn't include it and adding it wasn't asked for.
 
 ## Known v1 scaling limits (not full features, but documented constraints)
 - **`refresh_tokens` cleanup**: expired/revoked rows are filtered out at query time (`expires_at`/`revoked`), never purged. Fine at MVP scale; add a periodic cleanup (e.g. an extra daily Vercel Cron endpoint) if the table grows large.

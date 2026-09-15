@@ -13,7 +13,7 @@ async def create_baseline(
     db: AsyncSession, current_user: CurrentUser, project_id: uuid.UUID, *, name: str
 ) -> Baseline:
     """Snapshots every task's current start_date/end_date/budgeted_cost — the
-    source of "avance previsto" for EVM (section 4.1 point 14, ADR-017)."""
+    source of "avance previsto" for EVM (section 4.1 point 14, ADR-014)."""
     await project_service.get_project_for_user(db, current_user, project_id)
 
     tasks = await task_repository.list_all_by_project(db, project_id)

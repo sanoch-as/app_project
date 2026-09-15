@@ -71,7 +71,7 @@ async def list_by_project(
 
 
 async def get_active_baseline(db: AsyncSession, project_id: uuid.UUID) -> Baseline | None:
-    """The most recently created baseline (see ADR-017) — used by EVM (Phase 5)."""
+    """The most recently created baseline (see ADR-014) — used by EVM (Phase 5)."""
     result = await db.execute(
         select(Baseline)
         .where(Baseline.project_id == project_id)
