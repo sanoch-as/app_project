@@ -183,6 +183,76 @@ async def test_projected_progress_prorates_by_status_date(client: AsyncClient):
     assert after_body["tasks"][0]["actual_percent_complete"] == 40
 
 
+async def test_projected_progress_zero_cost_baseline_keeps_baseline_id(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    await _create_task(client, admin_token, project_id, budgeted_cost=0)
+
+    await client.post(
+        f"/api/v1/projects/{project_id}/baselines",
+        json={"name": "Schedule-only plan"},
+        headers=auth_header(admin_token),
+    )
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-09-10"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    # A baseline WAS saved — that must stay distinguishable from "no baseline"
+    # even though the cost-weighted planned % is undefined (no task has cost),
+    # since the frontend uses baseline_id (not the percent field) to decide
+    # whether to show "no baseline saved yet".
+    assert body["baseline_id"] is not None
+    assert body["baseline_name"] == "Schedule-only plan"
+    assert body["project_planned_percent_complete"] is None
+
+
+async def test_projected_progress_excludes_wbs_parent_rollup_from_project_actual(
+    client: AsyncClient,
+):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project_id, name="Parent")
+    child_one = await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Child 1",
+        parent_task_id=parent["id"],
+        budgeted_cost=800,
+    )
+    await client.patch(
+        f"/api/v1/tasks/{child_one['id']}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
+    )
+    await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Child 2",
+        parent_task_id=parent["id"],
+        budgeted_cost=200,
+    )
+    await _create_task(client, admin_token, project_id, name="Unrelated", budgeted_cost=1000)
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-09-10"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    # Same double-counting risk as the dashboard: the parent's rolled-up
+    # cost/percent must not be added on top of its children's.
+    assert response.json()["project_actual_percent_complete"] == pytest.approx(40.0)
+
+
 async def test_projected_progress_requires_status_date(client: AsyncClient):
     admin = await register_admin(client)
     admin_token = admin["tokens"]["access_token"]

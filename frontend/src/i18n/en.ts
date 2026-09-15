@@ -272,6 +272,9 @@ export const en = {
     thenComeBack: ", then come back here.",
     plannedAsOf: "Planned as of {{date}}",
     actualToday: "Actual today",
+    notAvailable: "N/A",
+    noCostData:
+      "Planned % can't be calculated — it's weighted by budgeted cost and no task in this project has one set. Per-task planned dates below still reflect the baseline.",
     baseline: "Baseline: {{name}}",
     key: "Key",
     baselineWindow: "Baseline window",

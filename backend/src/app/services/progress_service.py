@@ -15,6 +15,7 @@ from app.repositories import (
     task_repository,
     worklog_repository,
 )
+from app.services import rollup
 from app.services.evm import (
     BaselineTaskEVMInput,
     EVMMetrics,
@@ -61,6 +62,10 @@ async def _load_evm_inputs(
     # SQLAlchemy returns NUMERIC columns as Decimal; services/evm.py is pure
     # Python and works in plain floats, so convert at this ORM boundary.
     tasks = await task_repository.list_all_by_project(db, project_id)
+    # WBS parent tasks are excluded from every EVM/cost total below (see
+    # rollup.leaf_tasks): their cost/percent are already a roll-up of their
+    # children, so summing both would double-count every level of the tree.
+    leaf_ids = {t.id for t in rollup.leaf_tasks(tasks)}
     task_inputs = [
         TaskEVMInput(
             id=t.id,
@@ -68,6 +73,7 @@ async def _load_evm_inputs(
             percent_complete=float(t.percent_complete),
         )
         for t in tasks
+        if t.id in leaf_ids
     ]
 
     active_baseline = await baseline_repository.get_active_baseline(db, project_id)
@@ -80,6 +86,7 @@ async def _load_evm_inputs(
                 planned_cost=float(bt.planned_cost),
             )
             for bt in active_baseline.baseline_tasks
+            if bt.task_id in leaf_ids
         ]
         if active_baseline is not None
         else []
@@ -204,10 +211,12 @@ async def get_percent_complete_history(
         weighted_sum = 0.0
         total_cost = 0.0
         for task in tasks:
+            cost = budgeted_cost_by_task.get(task.id)
+            if cost is None:
+                continue  # WBS parent task — excluded, see leaf_ids above
             pct = percent_complete_at_or_before(snapshots_by_task.get(task.id, []), checkpoint)
             if pct is None:
                 continue
-            cost = budgeted_cost_by_task[task.id]
             weighted_sum += (pct / 100) * cost
             total_cost += cost
         return (weighted_sum / total_cost * 100) if total_cost else None

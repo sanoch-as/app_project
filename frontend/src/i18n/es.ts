@@ -275,6 +275,9 @@ export const es: typeof en = {
     thenComeBack: ", y luego vuelve aquí.",
     plannedAsOf: "Planeado al {{date}}",
     actualToday: "Real hoy",
+    notAvailable: "N/D",
+    noCostData:
+      "No se puede calcular el % planeado: se pondera por costo presupuestado y ninguna tarea de este proyecto tiene uno definido. Las fechas planeadas por tarea abajo sí reflejan la línea base.",
     baseline: "Línea base: {{name}}",
     key: "Clave",
     baselineWindow: "Ventana de la línea base",

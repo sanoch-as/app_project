@@ -15,7 +15,7 @@ from app.schemas.dashboard import (
     ProjectDashboard,
     UpcomingMilestone,
 )
-from app.services import progress_service, project_service
+from app.services import progress_service, project_service, rollup
 
 UPCOMING_MILESTONES_LIMIT = 5
 
@@ -23,11 +23,14 @@ UPCOMING_MILESTONES_LIMIT = 5
 def _overall_percent_complete(tasks: list[Task]) -> float:
     """Cost-weighted overall progress: EV / total budgeted cost. A simple
     average of each task's percent_complete would let a tiny task skew the
-    number as much as the project's biggest deliverable."""
-    total_budgeted = sum(float(t.budgeted_cost) for t in tasks)
+    number as much as the project's biggest deliverable. WBS parent tasks
+    are excluded (`rollup.leaf_tasks`) — their cost/percent are already a
+    roll-up of their children, so including them would double-count."""
+    leaves = rollup.leaf_tasks(tasks)
+    total_budgeted = sum(float(t.budgeted_cost) for t in leaves)
     if not total_budgeted:
         return 0.0
-    earned = sum((float(t.percent_complete) / 100) * float(t.budgeted_cost) for t in tasks)
+    earned = sum((float(t.percent_complete) / 100) * float(t.budgeted_cost) for t in leaves)
     return earned / total_budgeted * 100
 
 

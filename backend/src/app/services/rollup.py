@@ -11,6 +11,7 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
+from app.models.task import Task
 from app.repositories import task_repository
 from app.services.working_calendar import WorkingCalendar
 
@@ -55,6 +56,19 @@ def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) 
         budgeted_cost=budgeted_cost,
         percent_complete=percent_complete,
     )
+
+
+def leaf_tasks(tasks: list[Task]) -> list[Task]:
+    """Excludes WBS parent tasks (any task that is another task's
+    `parent_task_id` in this same list) from a project-wide cost/progress
+    aggregate. A parent's `budgeted_cost`/`percent_complete` are roll-ups
+    already equal to the sum/cost-weighted-average of its children
+    (`compute_rollup`), so summing every task without this filter double-
+    (or triple-, for deeper hierarchies) counts every level of the tree —
+    used by dashboard_service/progress_service wherever they total cost or
+    earned value across a project's tasks."""
+    parent_ids = {t.parent_task_id for t in tasks if t.parent_task_id is not None}
+    return [t for t in tasks if t.id not in parent_ids]
 
 
 async def propagate_rollup_to_ancestors(

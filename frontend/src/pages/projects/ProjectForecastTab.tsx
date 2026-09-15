@@ -179,7 +179,7 @@ export function ProjectForecastTab() {
       {isLoading && <LoadingSpinner label={t("forecast.calculating")} />}
       <ErrorMessage error={error} />
 
-      {data && data.project_planned_percent_complete === null && (
+      {data && data.baseline_id === null && (
         <Card>
           <Card.Body className="flex items-center justify-between gap-4">
             <p className="text-sm text-jira-textSub">
@@ -193,22 +193,40 @@ export function ProjectForecastTab() {
         </Card>
       )}
 
-      {data && data.project_planned_percent_complete !== null && (
+      {data && data.baseline_id !== null && (
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <ProgressKpi
               label={t("forecast.plannedAsOf", { date: statusDate })}
-              value={`${data.project_planned_percent_complete.toFixed(1)}%`}
+              value={
+                data.project_planned_percent_complete !== null
+                  ? `${data.project_planned_percent_complete.toFixed(1)}%`
+                  : t("forecast.notAvailable")
+              }
               icon={CalendarClock}
               tone="neutral"
             />
             <ProgressKpi
               label={t("forecast.actualToday")}
               value={`${data.project_actual_percent_complete.toFixed(1)}%`}
-              icon={data.project_actual_percent_complete >= data.project_planned_percent_complete ? TrendingUp : TrendingDown}
-              tone={data.project_actual_percent_complete >= data.project_planned_percent_complete ? "good" : "bad"}
+              icon={
+                data.project_planned_percent_complete !== null &&
+                data.project_actual_percent_complete < data.project_planned_percent_complete
+                  ? TrendingDown
+                  : TrendingUp
+              }
+              tone={
+                data.project_planned_percent_complete === null
+                  ? "neutral"
+                  : data.project_actual_percent_complete >= data.project_planned_percent_complete
+                    ? "good"
+                    : "bad"
+              }
             />
           </div>
+          {data.project_planned_percent_complete === null && (
+            <p className="text-xs text-jira-textSub">{t("forecast.noCostData")}</p>
+          )}
           {data.baseline_name && (
             <p className="text-xs text-jira-textSub">{t("forecast.baseline", { name: data.baseline_name })}</p>
           )}

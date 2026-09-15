@@ -57,6 +57,49 @@ async def test_project_dashboard_reports_percent_complete_and_overdue(client: As
     assert body["overdue_tasks"][0]["id"] == task["id"]
 
 
+async def test_dashboard_percent_complete_excludes_wbs_parent_rollup(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project_id, name="Parent")
+    child_one = await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Child 1",
+        parent_task_id=parent["id"],
+        budgeted_cost=800,
+    )
+    await client.patch(
+        f"/api/v1/tasks/{child_one['id']}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
+    )
+    await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Child 2",
+        parent_task_id=parent["id"],
+        budgeted_cost=200,
+    )
+    # Unrelated top-level task, untouched (0% complete, cost 1000) — needed so a
+    # bug that double-counts the parent's rolled-up cost/percent alongside its
+    # children would actually shift the ratio (with only the parent/children
+    # group in the project, doubling both sides of the ratio cancels out).
+    await _create_task(client, admin_token, project_id, name="Unrelated", budgeted_cost=1000)
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/dashboard", headers=auth_header(admin_token)
+    )
+    assert response.status_code == 200, response.text
+    # Leaf-only weighted average: (800*1 + 200*0 + 1000*0) / (800+200+1000) = 40%.
+    # Counting the parent's own rolled-up cost/percent on top would double its
+    # children's contribution and skew this to 53.33%.
+    assert response.json()["percent_complete"] == pytest.approx(40.0)
+
+
 async def test_project_dashboard_lists_upcoming_milestones(client: AsyncClient):
     admin = await register_admin(client)
     admin_token = admin["tokens"]["access_token"]
