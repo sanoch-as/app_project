@@ -93,4 +93,20 @@ Notes on things that aren't a literal transcription of section 7:
 - **`member` project visibility**: `GET /projects` returns only projects a `member` belongs to (admins see the whole org's projects); `GET /projects/{id}` and everything nested under it (`tasks`, `dependencies`, `members`) returns `404` for a project a `member` doesn't belong to, identically to a project that doesn't exist.
 - **Dependency validation**: `successor_id` must be a different task in the same project as the predecessor, and the new edge must not create a cycle (DFS check, section 5) — both violations return `422` (`dependency_cycle` for the cycle case). A duplicate `(predecessor_id, successor_id)` pair returns `409 dependency_exists`.
 
+**Phase 4 — baselines, worklogs (hours capture)**
+```
+POST   /api/v1/projects/{id}/baselines         (admin only)
+GET    /api/v1/projects/{id}/baselines
+GET    /api/v1/baselines/{id}
+
+GET    /api/v1/tasks/{id}/worklogs
+POST   /api/v1/tasks/{id}/worklogs
+PATCH  /api/v1/worklogs/{id}
+DELETE /api/v1/worklogs/{id}
+GET    /api/v1/reports/worklogs                (?project_id&user_id&from&to)
+```
+- **Baselines**: `POST` snapshots every current task's `start_date`/`end_date`/`budgeted_cost` into `baseline_tasks` — a point-in-time copy, unaffected by later task edits. The "active" baseline EVM (Phase 5) reads from is simply the most recently created one for that project — see ADR-017.
+- **Worklogs**: `user_id` is always the caller, never client-supplied — a worklog always belongs to whoever is logging in and calling the endpoint (section 4.1 point 16: "un colaborador registra horas"). Creating one requires the same project access as tasks (admin: any project in org; member: only projects they belong to). Editing/deleting one requires being its owner or an admin (`403` otherwise). There is no approval workflow — every worklog counts toward AC immediately (ADR-005).
+- **`GET /reports/worklogs`**: an admin sees every worklog in the org (optionally filtered); a `member` only ever sees worklogs on projects they belong to (`user_id`/`project_id`/date filters still apply on top of that restriction) — matching the permission matrix's "ver reportes: proyectos donde participa".
+
 This section grows with each phase; see `docs/DECISIONS.md` for the reasoning behind anything that isn't a literal transcription of spec section 7.

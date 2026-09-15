@@ -1,6 +1,16 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import auth, dependencies, organizations, projects, tasks, users
+from app.api.v1.endpoints import (
+    auth,
+    baselines,
+    dependencies,
+    organizations,
+    projects,
+    reports,
+    tasks,
+    users,
+    worklogs,
+)
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -10,3 +20,6 @@ api_router.include_router(users.router)
 api_router.include_router(projects.router)
 api_router.include_router(tasks.router)
 api_router.include_router(dependencies.router)
+api_router.include_router(baselines.router)
+api_router.include_router(worklogs.router)
+api_router.include_router(reports.router)

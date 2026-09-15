@@ -151,6 +151,18 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
+## ADR-017: The "active baseline" for EVM is simply the most recently created one
+
+**Context**: Section 6.3 computes PV "desde `baseline_tasks` de la baseline activa", but section 5's `baselines` table has no `is_active`/`is_current` flag, and section 4.1 point 14 explicitly allows multiple historical baselines per project.
+
+**Decision**: The active baseline for a project is whichever baseline has the most recent `created_at` for that project. No separate "activate" action or flag is needed — saving a new baseline (`POST /projects/{id}/baselines`) automatically supersedes the previous one as "active" for EVM purposes, while every prior baseline remains queryable via `GET /baselines/{id}` for historical comparison.
+
+**Alternatives considered**: Adding an `is_active` boolean column with an explicit activate/deactivate action (rejected — the spec's data model for `baselines` is given as fixed columns with "se puede extender pero no reducir"; adding a whole activation workflow for something "most recent" already captures unambiguously is unwarranted complexity for v1).
+
+**Consequences**: There's no way to mark an older baseline as "active" again without creating a new baseline row copying its values. Not needed for v1 — flagged only if a future requirement demands reverting to a prior baseline as the EVM reference.
+
+---
+
 ## ADR-016: Dependency constraints follow section 6.1's formula literally — `FS` lag 0 permits a same-day start
 
 **Context**: Section 6.1 gives the CPM forward-pass formula explicitly: "FS: `EF_predecessor + lag`; SS: `ES_predecessor + lag`; etc." Many scheduling tools (MS Project included, in some configurations) treat `FS` with lag 0 as requiring the successor to start the *next* working period after the predecessor finishes, i.e. an implicit "+1". The spec's own formula has no such implicit offset.

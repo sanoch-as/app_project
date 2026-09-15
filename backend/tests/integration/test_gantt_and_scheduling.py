@@ -29,9 +29,7 @@ async def test_gantt_endpoint_returns_tasks_and_dependencies(client: AsyncClient
     project_id = await _create_project(client, admin_token)
 
     task_a = await _create_task(client, admin_token, project_id, name="A")
-    task_b = await _create_task(
-        client, admin_token, project_id, name="B", start_date="2026-09-15"
-    )
+    task_b = await _create_task(client, admin_token, project_id, name="B", start_date="2026-09-15")
     await client.post(
         f"/api/v1/tasks/{task_a['id']}/dependencies",
         json={"successor_id": task_b["id"]},
