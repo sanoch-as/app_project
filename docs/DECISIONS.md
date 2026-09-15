@@ -136,6 +136,21 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
+## ADR-015: Task scheduling convention — start date + duration in, end date computed; WBS codes auto-numbered
+
+**Context**: The `tasks` table (section 5) has `start_date`, `end_date`, and `duration_days` as three separate columns, but the spec does not say which are user input versus derived, nor how `wbs_code` gets assigned. This is exactly the kind of ambiguity section 0 rule 1 asks to resolve with the industry-standard convention.
+
+**Decision**:
+- **Scheduling input**: a task is created/edited with `start_date` + `duration_days` (in working days); `end_date` is computed server-side (`services/working_calendar.py`) by walking forward `duration_days - 1` working days from `start_date` (a 1-day task starts and ends the same day), skipping weekends and the project's `project_holidays`. A milestone (`is_milestone = true`) always has `duration_days = 0` and `end_date = start_date`. This matches MS Project's default behavior (the spec's own first named reference point) and keeps `duration_days` — which `services/critical_path.py` needs for `EF = ES + duration_days` — as the authoritative input rather than a value back-derived from two dates that could disagree with it.
+- **Working calendar**: `projects.working_days_per_week` (an integer 5/6/7, not a specific weekday mask) is interpreted as "the first N days of a Monday-start week are working days" — i.e. 5 = Mon–Fri, 6 = Mon–Sat, 7 = every day. This is the simplest convention consistent with a single integer column (section 5 defines no weekday-mask column), and covers the overwhelming majority of real working calendars.
+- **`wbs_code` numbering**: assigned automatically on task creation, as `"<parent's wbs_code>.<n>"` (or just `"<n>"` at the top level), where `n` is one more than the current number of siblings under the same parent. Codes are not renumbered when a sibling is later deleted (so a gap like "2.1", "2.3" can appear) — renumbering on every delete would silently rewrite other tasks' identifiers, which is more disruptive than a gap; this matches how most real WBS tools behave (manual renumbering is a deliberate action, not an automatic side effect of deletion).
+
+**Alternatives considered**: Accepting `end_date` directly and deriving `duration_days` from the calendar (rejected — makes `duration_days` a derived value the CPM engine can't treat as authoritative input, and doesn't match the "estilo MS Project" framing in section 1); a weekday-mask calendar (rejected — over-engineered relative to the "calendario laboral básico" the spec actually asks for in section 4.1 point 5).
+
+**Consequences**: Changing `working_days_per_week` after tasks exist does not retroactively recompute their `end_date` — only a subsequent edit to that specific task recomputes it. This is acceptable for v1 and not expected to be a common operation.
+
+---
+
 ## ADR-014: `bcrypt` pinned to `4.0.1`, not the newest release
 
 **Context**: `passlib` 1.7.4 (the version required by section 2, and the newest one that exists — the project has been unmaintained since 2020) runs a self-test the first time it hashes/verifies a password, to detect a historical "wraparound bug" in some bcrypt builds. That self-test assumes bcrypt silently truncates secrets longer than 72 bytes. Starting with `bcrypt` 4.1, the `bcrypt` package raises `ValueError` on oversized secrets instead of truncating — which makes passlib's own self-test crash with `ValueError: password cannot be longer than 72 bytes`, on every single hash/verify call, independent of the actual password used by this app (none of which are anywhere near 72 bytes). This reproduced identically with `bcrypt` 5.0.0 (the version that installs by default on Python 3.14) and is a known upstream incompatibility, not a bug in this codebase.

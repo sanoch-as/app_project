@@ -30,8 +30,8 @@ app.add_middleware(
 )
 app.add_middleware(TenantContextMiddleware)
 
-app.add_exception_handler(AppError, app_error_handler)
-app.add_exception_handler(RequestValidationError, validation_error_handler)
+app.add_exception_handler(AppError, app_error_handler)  # type: ignore[arg-type]
+app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
 app.add_exception_handler(Exception, unhandled_error_handler)
 
 app.include_router(api_router)

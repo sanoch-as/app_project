@@ -17,7 +17,16 @@ def _pg_enum(enum_cls: type, name: str) -> SAEnum:
 
 
 class Base(DeclarativeBase):
-    """Shared declarative base for all ORM models."""
+    """Shared declarative base for all ORM models.
+
+    `eager_defaults=True`: server-computed columns (`created_at`/`updated_at`'s
+    `func.now()`, `id`'s `gen_random_uuid()`) are fetched back via RETURNING
+    on the same flush, instead of being marked "expired" for lazy reload on
+    next access. Under the async engine, an expired attribute touched outside
+    an awaited context (e.g. Pydantic's synchronous `model_validate`) raises
+    `MissingGreenlet` rather than transparently awaiting a reload."""
+
+    __mapper_args__ = {"eager_defaults": True}
 
     type_annotation_map = {
         UserRole: _pg_enum(UserRole, "user_role"),

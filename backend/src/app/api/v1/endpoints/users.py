@@ -6,11 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.enums import UserRole
 from app.core.exceptions import ConflictError, ForbiddenError, NotFoundError
-from app.core.security import CurrentUser, get_current_user, require_role
+from app.core.security import CurrentUser, get_current_user, hash_password, require_role
 from app.repositories import user_repository
 from app.schemas.common import Page
 from app.schemas.user import UserInvite, UserRead, UserUpdate
-from app.services.auth_service import hash_password
 
 router = APIRouter(prefix="/users", tags=["users"])
 

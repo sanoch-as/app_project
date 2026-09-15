@@ -17,5 +17,9 @@ class Organization(UUIDPKMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     slug: Mapped[str] = mapped_column(String(255), unique=True, nullable=False, index=True)
 
-    users: Mapped[list["User"]] = relationship(back_populates="organization")
-    projects: Mapped[list["Project"]] = relationship(back_populates="organization")
+    users: Mapped[list["User"]] = relationship(
+        back_populates="organization", cascade="all, delete-orphan"
+    )
+    projects: Mapped[list["Project"]] = relationship(
+        back_populates="organization", cascade="all, delete-orphan"
+    )

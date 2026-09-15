@@ -32,5 +32,6 @@ def configure_logging() -> None:
     )
 
 
-def get_logger(name: str) -> structlog.stdlib.BoundLogger:
-    return structlog.get_logger(name)
+def get_logger(name: str) -> structlog.typing.FilteringBoundLogger:
+    logger: structlog.typing.FilteringBoundLogger = structlog.get_logger(name)
+    return logger

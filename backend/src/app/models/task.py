@@ -66,7 +66,9 @@ class Task(UUIDPKMixin, TimestampMixin, Base):
 
     project: Mapped["Project"] = relationship(back_populates="tasks")
     parent: Mapped["Task | None"] = relationship(remote_side="Task.id", back_populates="children")
-    children: Mapped[list["Task"]] = relationship(back_populates="parent")
+    children: Mapped[list["Task"]] = relationship(
+        back_populates="parent", cascade="all, delete-orphan"
+    )
 
     assignees: Mapped[list["TaskAssignee"]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
