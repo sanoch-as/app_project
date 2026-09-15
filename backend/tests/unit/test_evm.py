@@ -4,10 +4,12 @@ from datetime import date
 from app.services.evm import (
     BaselineTaskEVMInput,
     TaskEVMInput,
+    TaskPercentSnapshot,
     compute_ac,
     compute_ev,
     compute_evm,
     compute_pv,
+    percent_complete_at_or_before,
     planned_percent_complete_by_task,
     planned_percent_complete_project,
 )
@@ -120,3 +122,26 @@ def test_planned_percent_complete_project_is_cost_weighted():
     ]
     result = planned_percent_complete_project(baseline_tasks, date(2026, 9, 16))
     assert result == 1000 / 4000 * 100
+
+
+def test_percent_complete_at_or_before_none_without_any_snapshot():
+    assert percent_complete_at_or_before([], date(2026, 9, 16)) is None
+
+
+def test_percent_complete_at_or_before_none_when_checkpoint_predates_first_snapshot():
+    snapshots = [TaskPercentSnapshot(TASK_A, date(2026, 9, 14), 20.0)]
+    assert percent_complete_at_or_before(snapshots, date(2026, 9, 10)) is None
+
+
+def test_percent_complete_at_or_before_picks_most_recent_at_or_before_checkpoint():
+    snapshots = [
+        TaskPercentSnapshot(TASK_A, date(2026, 9, 10), 10.0),
+        TaskPercentSnapshot(TASK_A, date(2026, 9, 14), 30.0),
+        TaskPercentSnapshot(TASK_A, date(2026, 9, 20), 70.0),
+    ]
+    # Exactly on a snapshot date.
+    assert percent_complete_at_or_before(snapshots, date(2026, 9, 14)) == 30.0
+    # Between two snapshots -> takes the earlier (most recent known-as-of).
+    assert percent_complete_at_or_before(snapshots, date(2026, 9, 17)) == 30.0
+    # After the last snapshot -> takes the last known value.
+    assert percent_complete_at_or_before(snapshots, date(2026, 12, 31)) == 70.0

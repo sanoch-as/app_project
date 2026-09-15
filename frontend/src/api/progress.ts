@@ -1,5 +1,10 @@
 import { apiClient } from "@/api/client";
-import type { ProgressResponse, ProjectedProgressResponse, RecalculateResponse } from "@/types/api";
+import type {
+  PercentCompleteHistoryResponse,
+  ProgressResponse,
+  ProjectedProgressResponse,
+  RecalculateResponse,
+} from "@/types/api";
 
 export const progressApi = {
   get: (projectId: string) =>
@@ -14,6 +19,13 @@ export const progressApi = {
     apiClient
       .get<ProjectedProgressResponse>(`/projects/${projectId}/progress/projected`, {
         params: { status_date: statusDate },
+      })
+      .then((r) => r.data),
+
+  getHistory: (projectId: string, startDate: string, endDate: string, intervalDays: number) =>
+    apiClient
+      .get<PercentCompleteHistoryResponse>(`/projects/${projectId}/progress/history`, {
+        params: { start_date: startDate, end_date: endDate, interval_days: intervalDays },
       })
       .then((r) => r.data),
 };

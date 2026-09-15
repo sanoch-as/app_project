@@ -356,6 +356,19 @@ export interface ProjectedProgressResponse {
   tasks: TaskPlannedProgressRead[];
 }
 
+export interface PercentCompleteSeriesPointRead {
+  checkpoint: string;
+  planned_percent_complete: number | null;
+  actual_percent_complete: number | null;
+}
+
+export interface PercentCompleteHistoryResponse {
+  start_date: string;
+  end_date: string;
+  interval_days: number;
+  points: PercentCompleteSeriesPointRead[];
+}
+
 // ---------------------------------------------------------------------------
 // Dashboards
 // ---------------------------------------------------------------------------

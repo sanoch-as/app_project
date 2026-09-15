@@ -1,6 +1,10 @@
+from datetime import date, timedelta
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.repositories import task_progress_snapshot_repository
 from tests.fixtures.auth import auth_header, register_admin
 
 pytestmark = pytest.mark.asyncio
@@ -186,6 +190,108 @@ async def test_projected_progress_requires_status_date(client: AsyncClient):
 
     response = await client.get(
         f"/api/v1/projects/{project_id}/progress/projected", headers=auth_header(admin_token)
+    )
+    assert response.status_code == 422
+
+
+async def test_progress_history_reconstructs_actual_from_snapshots(
+    client: AsyncClient, db_session: AsyncSession
+):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    task = await _create_task(client, admin_token, project_id, budgeted_cost=1000)
+
+    today = date.today()
+    four_weeks_ago = today - timedelta(weeks=4)
+    three_weeks_ago = today - timedelta(weeks=3)
+    two_weeks_ago = today - timedelta(weeks=2)
+    one_week_ago = today - timedelta(weeks=1)
+    next_week = today + timedelta(weeks=1)
+
+    task_uuid = task["id"]
+    for snapshot_date, percent in [
+        (three_weeks_ago, 0.0),
+        (two_weeks_ago, 50.0),
+        (today, 100.0),
+    ]:
+        await task_progress_snapshot_repository.upsert_many(
+            db_session, project_id, snapshot_date, [(task_uuid, percent)]
+        )
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/history",
+        params={"start_date": four_weeks_ago, "end_date": next_week, "interval_days": 7},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    points_by_checkpoint = {p["checkpoint"]: p for p in body["points"]}
+
+    assert points_by_checkpoint[str(four_weeks_ago)]["actual_percent_complete"] is None
+    assert points_by_checkpoint[str(three_weeks_ago)]["actual_percent_complete"] == 0.0
+    assert points_by_checkpoint[str(two_weeks_ago)]["actual_percent_complete"] == 50.0
+    # Between two snapshots -> carries the most recent known value forward.
+    assert points_by_checkpoint[str(one_week_ago)]["actual_percent_complete"] == 50.0
+    assert points_by_checkpoint[str(today)]["actual_percent_complete"] == 100.0
+    # Future checkpoint -> cut off, no actual value to show yet.
+    assert points_by_checkpoint[str(next_week)]["actual_percent_complete"] is None
+
+    # No baseline saved in this test -> nothing to compare planned progress against.
+    assert all(p["planned_percent_complete"] is None for p in body["points"])
+
+
+async def test_progress_history_has_planned_values_with_a_baseline(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    await _create_task(client, admin_token, project_id, duration_days=20)
+    await client.post(
+        f"/api/v1/projects/{project_id}/baselines",
+        json={"name": "Plan A"},
+        headers=auth_header(admin_token),
+    )
+
+    today = date.today()
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/history",
+        params={
+            "start_date": today,
+            "end_date": today + timedelta(weeks=6),
+            "interval_days": 7,
+        },
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert any(p["planned_percent_complete"] is not None for p in body["points"])
+
+
+async def test_progress_history_rejects_end_before_start(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    today = date.today()
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/history",
+        params={"start_date": today, "end_date": today - timedelta(days=1), "interval_days": 7},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 400
+
+
+async def test_progress_history_rejects_invalid_interval(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    today = date.today()
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/history",
+        params={"start_date": today, "end_date": today, "interval_days": 0},
+        headers=auth_header(admin_token),
     )
     assert response.status_code == 422
 

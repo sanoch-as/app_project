@@ -1,6 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -11,15 +11,19 @@ from app.repositories import (
     baseline_repository,
     progress_snapshot_repository,
     project_repository,
+    task_progress_snapshot_repository,
     task_repository,
     worklog_repository,
 )
 from app.services.evm import (
     BaselineTaskEVMInput,
     EVMMetrics,
+    PercentCompletePoint,
     TaskEVMInput,
+    TaskPercentSnapshot,
     compute_ev,
     compute_evm,
+    percent_complete_at_or_before,
     planned_percent_complete_by_task,
     planned_percent_complete_project,
 )
@@ -105,10 +109,15 @@ async def get_current_progress(
 
 
 async def recalculate_and_store(db: AsyncSession, project: Project) -> EVMMetrics:
-    _, task_inputs, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
+    tasks, task_inputs, baseline_tasks, worklog_costs = await _load_evm_inputs(db, project.id)
     today = _today()
     metrics = compute_evm(task_inputs, baseline_tasks, worklog_costs, today)
     await progress_snapshot_repository.upsert(db, project.id, today, metrics)
+    # Per-task snapshot too (ADR-028) — this is what lets the "% Real" forecast curve
+    # show real history instead of only ever seeing each task's current value.
+    await task_progress_snapshot_repository.upsert_many(
+        db, project.id, today, [(t.id, float(t.percent_complete)) for t in tasks]
+    )
     await db.commit()
     return metrics
 
@@ -155,6 +164,70 @@ async def get_projected_progress(
         project_actual_percent_complete=project_actual,
         tasks=task_rows,
     )
+
+
+async def get_percent_complete_history(
+    db: AsyncSession,
+    project: Project,
+    start_date: date,
+    end_date: date,
+    interval_days: int,
+) -> list[PercentCompletePoint]:
+    """Planned-vs-actual % complete over time (ADR-028), one point every interval_days
+    from start_date to end_date (plus the exact end_date if it doesn't land on the
+    grid) — same checkpoint-stepping pattern as services/scurve.py's weekly loop, but
+    with a caller-chosen step. "Planned" is fully known in advance (schedule-derived,
+    same as PV); "Actual" is None for any checkpoint after today (nothing to show yet)
+    and reconstructed from task_progress_snapshots for checkpoints at or before today —
+    None there too if no snapshot exists that far back (no history before this feature
+    shipped, not an error)."""
+    tasks, task_inputs, baseline_tasks, _ = await _load_evm_inputs(db, project.id)
+    today = _today()
+    budgeted_cost_by_task = {ti.id: ti.budgeted_cost for ti in task_inputs}
+
+    raw_snapshots = await task_progress_snapshot_repository.list_up_to_date(
+        db, project.id, end_date
+    )
+    snapshots_by_task: dict[uuid.UUID, list[TaskPercentSnapshot]] = {}
+    for row in raw_snapshots:
+        snapshots_by_task.setdefault(row.task_id, []).append(
+            TaskPercentSnapshot(
+                task_id=row.task_id,
+                snapshot_date=row.snapshot_date,
+                percent_complete=float(row.percent_complete),
+            )
+        )
+
+    def actual_at(checkpoint: date) -> float | None:
+        if checkpoint > today:
+            return None
+        weighted_sum = 0.0
+        total_cost = 0.0
+        for task in tasks:
+            pct = percent_complete_at_or_before(snapshots_by_task.get(task.id, []), checkpoint)
+            if pct is None:
+                continue
+            cost = budgeted_cost_by_task[task.id]
+            weighted_sum += (pct / 100) * cost
+            total_cost += cost
+        return (weighted_sum / total_cost * 100) if total_cost else None
+
+    def build_point(checkpoint: date) -> PercentCompletePoint:
+        return PercentCompletePoint(
+            checkpoint=checkpoint,
+            planned_percent_complete=planned_percent_complete_project(baseline_tasks, checkpoint),
+            actual_percent_complete=actual_at(checkpoint),
+        )
+
+    points = [build_point(start_date)]
+    checkpoint = start_date + timedelta(days=interval_days)
+    while checkpoint < end_date:
+        points.append(build_point(checkpoint))
+        checkpoint += timedelta(days=interval_days)
+    if end_date > start_date:
+        points.append(build_point(end_date))
+
+    return points
 
 
 async def recalculate_all_active(db: AsyncSession) -> int:

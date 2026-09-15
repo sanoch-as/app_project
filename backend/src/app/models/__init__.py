@@ -8,6 +8,7 @@ from app.models.progress_snapshot import ProgressSnapshot
 from app.models.project import Project, ProjectHoliday, ProjectMember
 from app.models.refresh_token import RefreshToken
 from app.models.task import Task, TaskAssignee
+from app.models.task_progress_snapshot import TaskProgressSnapshot
 from app.models.user import User
 from app.models.worklog import Worklog
 
@@ -25,4 +26,5 @@ __all__ = [
     "BaselineTask",
     "Worklog",
     "ProgressSnapshot",
+    "TaskProgressSnapshot",
 ]

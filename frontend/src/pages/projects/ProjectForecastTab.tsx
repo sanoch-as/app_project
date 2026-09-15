@@ -10,16 +10,29 @@ import {
 import { CalendarClock, Target, TrendingDown, TrendingUp } from "lucide-react";
 import clsx from "clsx";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
-import { useProjectedProgress } from "@/hooks/useProgress";
+import { useProgressHistory, useProjectedProgress } from "@/hooks/useProgress";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { Card } from "@/components/common/Card";
 import { DataTable } from "@/components/common/DataTable";
 import { TaskStatusBadge } from "@/components/common/Badge";
+import { PercentCompleteChart } from "@/components/scurve/PercentCompleteChart";
 import type { TaskPlannedProgressRead } from "@/types/api";
+
+const INTERVAL_OPTIONS = [
+  { value: 7, label: "Weekly" },
+  { value: 15, label: "Biweekly" },
+  { value: 30, label: "Monthly" },
+];
 
 function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
 }
 
 function ProgressKpi({
@@ -60,6 +73,16 @@ export function ProjectForecastTab() {
   const [sorting, setSorting] = useState<SortingState>([{ id: "wbs_code", desc: false }]);
 
   const { data, isLoading, error } = useProjectedProgress(project.id, statusDate);
+
+  const [historyStart, setHistoryStart] = useState(project.start_date ?? today());
+  const [historyEnd, setHistoryEnd] = useState(project.end_date ?? addDays(today(), 84));
+  const [intervalDays, setIntervalDays] = useState(7);
+
+  const {
+    data: history,
+    isLoading: historyLoading,
+    error: historyError,
+  } = useProgressHistory(project.id, historyStart, historyEnd, intervalDays);
 
   const columns = useMemo<ColumnDef<TaskPlannedProgressRead>[]>(
     () => [
@@ -190,6 +213,65 @@ export function ProjectForecastTab() {
             <p className="text-xs text-jira-textSub">Baseline: {data.baseline_name}</p>
           )}
           <DataTable table={table} emptyMessage="No tasks in this project yet." />
+
+          <div className="border-t border-jira-border pt-6">
+            <div className="mb-4 flex flex-wrap items-end justify-between gap-4">
+              <div>
+                <h2 className="text-sm font-semibold text-jira-text">Progress over time</h2>
+                <p className="mt-1 max-w-xl text-sm text-jira-textSub">
+                  The "Real %" line only covers dates with recorded history (captured daily going
+                  forward from when this feature shipped) and does not extend past today.
+                </p>
+              </div>
+              <div className="flex flex-wrap items-end gap-3">
+                <div>
+                  <label className="label" htmlFor="history_start">
+                    From
+                  </label>
+                  <input
+                    id="history_start"
+                    type="date"
+                    className="input"
+                    value={historyStart}
+                    onChange={(e) => setHistoryStart(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="history_end">
+                    To
+                  </label>
+                  <input
+                    id="history_end"
+                    type="date"
+                    className="input"
+                    value={historyEnd}
+                    onChange={(e) => setHistoryEnd(e.target.value)}
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="history_interval">
+                    Interval
+                  </label>
+                  <select
+                    id="history_interval"
+                    className="input"
+                    value={intervalDays}
+                    onChange={(e) => setIntervalDays(Number(e.target.value))}
+                  >
+                    {INTERVAL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {historyLoading && <LoadingSpinner label="Building chart…" />}
+            <ErrorMessage error={historyError} />
+            {history && <PercentCompleteChart points={history.points} />}
+          </div>
         </>
       )}
     </div>

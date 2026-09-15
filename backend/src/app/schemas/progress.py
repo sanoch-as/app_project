@@ -4,7 +4,7 @@ from datetime import date
 from pydantic import BaseModel
 
 from app.core.enums import TaskStatus
-from app.services.evm import EVMMetrics
+from app.services.evm import EVMMetrics, PercentCompletePoint
 from app.services.progress_service import ProjectedProgress, TaskProjectedProgress
 from app.services.scurve import SCurvePoint
 
@@ -98,3 +98,24 @@ class ProjectedProgressResponse(BaseModel):
             project_actual_percent_complete=result.project_actual_percent_complete,
             tasks=[TaskPlannedProgressRead.from_row(t) for t in result.tasks],
         )
+
+
+class PercentCompleteSeriesPointRead(BaseModel):
+    checkpoint: date
+    planned_percent_complete: float | None
+    actual_percent_complete: float | None
+
+    @classmethod
+    def from_point(cls, point: PercentCompletePoint) -> "PercentCompleteSeriesPointRead":
+        return cls(
+            checkpoint=point.checkpoint,
+            planned_percent_complete=point.planned_percent_complete,
+            actual_percent_complete=point.actual_percent_complete,
+        )
+
+
+class PercentCompleteHistoryResponse(BaseModel):
+    start_date: date
+    end_date: date
+    interval_days: int
+    points: list[PercentCompleteSeriesPointRead]

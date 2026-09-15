@@ -86,6 +86,33 @@ def planned_percent_complete_project(
     return compute_pv(baseline_tasks, status_date) / total_planned_cost * 100
 
 
+@dataclass(frozen=True)
+class TaskPercentSnapshot:
+    task_id: uuid.UUID
+    snapshot_date: date
+    percent_complete: float
+
+
+@dataclass(frozen=True)
+class PercentCompletePoint:
+    checkpoint: date
+    planned_percent_complete: float | None
+    actual_percent_complete: float | None
+
+
+def percent_complete_at_or_before(
+    snapshots_for_task: list[TaskPercentSnapshot], checkpoint: date
+) -> float | None:
+    """Point-in-time lookup: the most recently known percent_complete for one task at
+    or before checkpoint — None if no snapshot exists yet that far back. `snapshots_for_task`
+    must already be filtered to a single task (ordering doesn't matter, all candidates
+    are scanned)."""
+    candidates = [s for s in snapshots_for_task if s.snapshot_date <= checkpoint]
+    if not candidates:
+        return None
+    return max(candidates, key=lambda s: s.snapshot_date).percent_complete
+
+
 def compute_ev(tasks: list[TaskEVMInput]) -> float:
     """Always the *current* value — see ADR-013 (no percent_complete history table)."""
     return sum((task.percent_complete / 100) * task.budgeted_cost for task in tasks)

@@ -17,6 +17,19 @@ export function useProjectedProgress(projectId: string | undefined, statusDate: 
   });
 }
 
+export function useProgressHistory(
+  projectId: string | undefined,
+  startDate: string,
+  endDate: string,
+  intervalDays: number,
+) {
+  return useQuery({
+    queryKey: ["projects", projectId, "progress", "history", startDate, endDate, intervalDays],
+    queryFn: () => progressApi.getHistory(projectId!, startDate, endDate, intervalDays),
+    enabled: Boolean(projectId && startDate && endDate),
+  });
+}
+
 export function useRecalculateProgress(projectId: string) {
   const queryClient = useQueryClient();
   return useMutation({

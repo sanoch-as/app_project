@@ -5,9 +5,12 @@ from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.exceptions import AppError
 from app.core.security import CurrentUser, get_current_user, verify_cron_secret
 from app.schemas.progress import (
     EVMMetricsRead,
+    PercentCompleteHistoryResponse,
+    PercentCompleteSeriesPointRead,
     ProgressResponse,
     ProjectedProgressResponse,
     RecalculateAllResponse,
@@ -45,6 +48,29 @@ async def get_projected_progress(
     project = await project_service.get_project_for_user(db, current_user, project_id)
     result = await progress_service.get_projected_progress(db, project, status_date)
     return ProjectedProgressResponse.from_result(result)
+
+
+@router.get("/history", response_model=PercentCompleteHistoryResponse)
+async def get_progress_history(
+    project_id: uuid.UUID,
+    start_date: date = Query(...),
+    end_date: date = Query(...),
+    interval_days: int = Query(..., ge=1, le=90),
+    current_user: CurrentUser = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> PercentCompleteHistoryResponse:
+    if end_date < start_date:
+        raise AppError("end_date must not be before start_date", code="invalid_date_range")
+    project = await project_service.get_project_for_user(db, current_user, project_id)
+    points = await progress_service.get_percent_complete_history(
+        db, project, start_date, end_date, interval_days
+    )
+    return PercentCompleteHistoryResponse(
+        start_date=start_date,
+        end_date=end_date,
+        interval_days=interval_days,
+        points=[PercentCompleteSeriesPointRead.from_point(p) for p in points],
+    )
 
 
 @router.post("/recalculate", response_model=RecalculateResponse)
