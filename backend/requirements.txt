@@ -1,6 +1,6 @@
 # Generated from pyproject.toml — used by Vercel to build the Python runtime.
 # Keep in sync with [tool.poetry.dependencies] in pyproject.toml.
-# Versions pinned to what was verified locally (Python 3.14) — see ADR-010 in docs/DECISIONS.md.
+# Versions pinned to what was verified locally (Python 3.14) — see ADR-009 in docs/DECISIONS.md.
 fastapi==0.141.1
 uvicorn[standard]==0.53.0
 sqlalchemy==2.0.53
