@@ -109,4 +109,15 @@ GET    /api/v1/reports/worklogs                (?project_id&user_id&from&to)
 - **Worklogs**: `user_id` is always the caller, never client-supplied — a worklog always belongs to whoever is logging in and calling the endpoint (section 4.1 point 16: "un colaborador registra horas"). Creating one requires the same project access as tasks (admin: any project in org; member: only projects they belong to). Editing/deleting one requires being its owner or an admin (`403` otherwise). There is no approval workflow — every worklog counts toward AC immediately (ADR-005).
 - **`GET /reports/worklogs`**: an admin sees every worklog in the org (optionally filtered); a `member` only ever sees worklogs on projects they belong to (`user_id`/`project_id`/date filters still apply on top of that restriction) — matching the permission matrix's "ver reportes: proyectos donde participa".
 
+**Phase 5 — EVM and the S-curve**
+```
+GET    /api/v1/projects/{id}/progress
+POST   /api/v1/projects/{id}/progress/recalculate
+POST   /api/v1/progress/recalculate-all         (Authorization: Bearer <CRON_SECRET>, not a user JWT)
+```
+- `GET .../progress` always computes fresh (never reads `progress_snapshots` — see ADR-018) and returns `current` (today's PV/EV/AC/SPI/CPI) plus `s_curve` (one point per week spanning the active baseline, empty if there's no baseline yet).
+- `POST .../progress/recalculate` computes the same "today" numbers and additionally upserts a `progress_snapshots` row for `(project_id, today)` — this is what actually builds historical data over time, independent of what `GET .../progress` shows live.
+- `POST /progress/recalculate-all` is the Vercel Cron target: no `organization_id` scoping (it iterates every `status=active` project system-wide), authenticated by `CRON_SECRET` instead of a user token, and calls the same per-project recalculation as the on-demand endpoint above.
+- `SPI`/`CPI` come back `null` (not `0` or omitted) whenever their denominator (`PV`/`AC` respectively) is `0` — most commonly, `SPI` is `null` for a project with no baseline yet.
+
 This section grows with each phase; see `docs/DECISIONS.md` for the reasoning behind anything that isn't a literal transcription of spec section 7.

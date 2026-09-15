@@ -151,6 +151,24 @@ Short-form ADRs for every decision made autonomously (per `prompt-claude-code-pl
 
 ---
 
+## ADR-018: EVM/S-curve computation design — live-computed reads, `progress_snapshots` as the cron's historical log only
+
+**Context**: Section 7 gives exactly one read endpoint for progress (`GET /projects/{id}/progress`) alongside two write-only recompute endpoints (`POST .../progress/recalculate`, `POST /progress/recalculate-all`). Section 4.1 point 20 says `progress_snapshots` stores a "snapshot histórico... recalculado por un Vercel Cron Job diario + endpoint on-demand," but never says the read endpoint has to source its response from that table. Meanwhile the Definition of Done requires the S-curve to "update when hours are logged or % complete changes" — i.e. it must never look stale.
+
+**Decision**:
+- `GET /projects/{id}/progress` always computes fresh, live numbers (`services/evm.py` + `services/scurve.py`) from the current `tasks`/`baseline_tasks`/`worklogs` — it never reads `progress_snapshots`. This is what makes it react instantly to a new worklog or a `percent_complete` edit, satisfying the DoD line above.
+- `progress_snapshots` is written only by the two recompute endpoints (the daily cron and the manual "recalculate now" button), each call upserting exactly one row for `(project_id, today)`. It exists as a historical trend log outside what the spec's section 7 endpoint set otherwise exposes — nothing currently reads it back, but it is populated exactly as section 5 describes, ready for a future trend-over-time report.
+- **PV** at a status date `t`: for each task, prorate its baseline (`baseline_tasks` of the *active* baseline — ADR-017) `planned_cost` linearly between `planned_start_date` and `planned_end_date` (0% before the window, 100% at/after `planned_end_date`), then sum across tasks. If a project has no baseline yet, PV is `0` for every task (there is nothing to compare against — this is a real state, not an error, and is surfaced by `SPI` coming back `null`).
+- **EV** at any status date: `sum((percent_complete / 100) * budgeted_cost)` over all tasks, using each task's *current* `percent_complete` — per section 6.3's own words, "el valor actual si t = hoy," and no percent-complete history table exists to do better for `t != hoy` (see the "v1 stand-in" note this implies in `docs/BACKLOG.md`). Concretely: EV is the same number regardless of which date it's evaluated at, including every point along the S-curve. PV and AC still vary by week (they're schedule- and worklog-date-driven respectively), so `SPI`/`CPI` still produce a meaningful, moving curve — only the raw EV line itself is flat.
+- **AC** at a status date `t`: `sum(hours * cost_per_hour)` over every worklog on the project's tasks with `work_date <= t`; a user with a null `cost_per_hour` contributes `0` and triggers a `structlog` warning (never blocks the calculation) — exactly as section 6.3 specifies.
+- **S-curve checkpoints**: one point per week, from the active baseline's earliest `planned_start_date` to its latest `planned_end_date` inclusive (if there's no baseline, the curve is empty — there's nothing to plot). `PV` at each checkpoint uses that checkpoint's real date (it's purely schedule-derived, so future checkpoints are fully known in advance); `AC` (and therefore `CPI`) at a checkpoint clamps its status date to `min(checkpoint, today)`, so checkpoints beyond today show today's actual cost held flat rather than fabricating future actuals.
+
+**Alternatives considered**: Reading `GET /progress` from `progress_snapshots` (rejected — the daily-cron-populated table would be stale/empty for a brand-new project or one just registered with the platform, directly conflicting with the DoD's "updates immediately" requirement); inventing a proxy for historical EV from worklog hours (e.g. scaling current EV by the fraction of total hours logged by each checkpoint) to make the historical EV line non-flat (rejected — not something section 6.3 asks for, and it would silently blend two conceptually different measures — hours spent vs. value earned — under an invented formula with no basis in the spec).
+
+**Consequences**: The EV line on the S-curve chart is flat across history in the current UI (only `SPI`/`CPI`, driven by `PV`/`AC`, meaningfully trend week to week) until a real percent-complete history table exists. This is called out again in `docs/BACKLOG.md` as a natural extension of module D/E's evolution.
+
+---
+
 ## ADR-017: The "active baseline" for EVM is simply the most recently created one
 
 **Context**: Section 6.3 computes PV "desde `baseline_tasks` de la baseline activa", but section 5's `baselines` table has no `is_active`/`is_current` flag, and section 4.1 point 14 explicitly allows multiple historical baselines per project.

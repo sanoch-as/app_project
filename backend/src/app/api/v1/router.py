@@ -5,6 +5,7 @@ from app.api.v1.endpoints import (
     baselines,
     dependencies,
     organizations,
+    progress,
     projects,
     reports,
     tasks,
@@ -23,3 +24,5 @@ api_router.include_router(dependencies.router)
 api_router.include_router(baselines.router)
 api_router.include_router(worklogs.router)
 api_router.include_router(reports.router)
+api_router.include_router(progress.router)
+api_router.include_router(progress.cron_router)

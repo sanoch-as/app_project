@@ -6,7 +6,15 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.enums import ProjectStatus
 from app.models.project import Project, ProjectHoliday, ProjectMember
+
+
+async def list_active_projects(db: AsyncSession) -> list[Project]:
+    """System-wide (no organization filter) — used only by the
+    CRON_SECRET-protected /progress/recalculate-all endpoint, section 6.3."""
+    result = await db.execute(select(Project).where(Project.status == ProjectStatus.ACTIVE))
+    return list(result.scalars().all())
 
 
 async def get_by_id(

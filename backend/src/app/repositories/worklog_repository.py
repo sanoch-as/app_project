@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project, ProjectMember
 from app.models.task import Task
+from app.models.user import User
 from app.models.worklog import Worklog
 
 
@@ -105,3 +106,28 @@ async def list_report(
         base_query.order_by(Worklog.work_date.desc()).limit(limit).offset(offset)
     )
     return list(result.scalars().all()), total
+
+
+async def list_costs_by_project(
+    db: AsyncSession, project_id: uuid.UUID
+) -> tuple[list[tuple[date, float]], int]:
+    """(work_date, hours * cost_per_hour) for every worklog on the project's
+    tasks — one query, fed straight into services/evm.py. Also returns how
+    many rows had a null `cost_per_hour` (contributed as 0 — section 6.3),
+    so the caller can log a warning without blocking the calculation."""
+    result = await db.execute(
+        select(Worklog.work_date, Worklog.hours, User.cost_per_hour)
+        .join(Task, Task.id == Worklog.task_id)
+        .join(User, User.id == Worklog.user_id)
+        .where(Task.project_id == project_id)
+    )
+    rows = result.all()
+    costs: list[tuple[date, float]] = []
+    missing_rate_count = 0
+    for work_date, hours, cost_per_hour in rows:
+        if cost_per_hour is None:
+            missing_rate_count += 1
+            costs.append((work_date, 0.0))
+        else:
+            costs.append((work_date, float(hours) * float(cost_per_hour)))
+    return costs, missing_rate_count

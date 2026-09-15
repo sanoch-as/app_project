@@ -109,3 +109,16 @@ def require_role(*allowed_roles: UserRole) -> Callable[[CurrentUser], CurrentUse
         return current_user
 
     return dependency
+
+
+def verify_cron_secret(
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer_scheme),
+) -> None:
+    """Protects /progress/recalculate-all (section 6.3): only Vercel Cron,
+    which sends `Authorization: Bearer <CRON_SECRET>`, may call it — there is
+    no user JWT involved, this is not a per-user-scoped endpoint."""
+    valid = credentials is not None and secrets.compare_digest(
+        credentials.credentials, settings.cron_secret
+    )
+    if not valid:
+        raise UnauthorizedError("Invalid or missing cron secret")
