@@ -211,6 +211,91 @@ async def test_projected_progress_zero_cost_baseline_keeps_baseline_id(client: A
     assert body["project_planned_percent_complete"] is None
 
 
+async def test_projected_progress_by_duration_differs_from_by_cost(client: AsyncClient):
+    # Both tasks are 1-day (duration_days=1), so their duration weights are
+    # equal (1 each) — but their costs are wildly asymmetric (9000 vs 1000),
+    # so cost-weighted and duration-weighted give clearly different answers
+    # for both "planned" and "actual", proving the two sections are
+    # independent (Forecast tab "Por costo" vs "Por plazo", ADR-033).
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    task_a = await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Task A",
+        start_date="2026-08-01",
+        duration_days=1,
+        budgeted_cost=9000,
+    )
+    await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Task B",
+        start_date="2026-12-01",
+        duration_days=1,
+        budgeted_cost=1000,
+    )
+    await client.post(
+        f"/api/v1/projects/{project_id}/baselines",
+        json={"name": "Plan A"},
+        headers=auth_header(admin_token),
+    )
+    await client.patch(
+        f"/api/v1/tasks/{task_a['id']}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
+    )
+
+    # Status date is after Task A's window (fully elapsed) and before Task
+    # B's (not started): planned = 100% for A, 0% for B either way.
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-09-01"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+
+    # Cost-weighted: (100*9000 + 0*1000) / 10000 = 90%.
+    assert body["project_planned_percent_complete"] == pytest.approx(90.0)
+    assert body["project_actual_percent_complete"] == pytest.approx(90.0)
+    # Duration-weighted: (100*1 + 0*1) / 2 = 50%, since both tasks are 1 day.
+    assert body["project_planned_percent_complete_by_duration"] == pytest.approx(50.0)
+    assert body["project_actual_percent_complete_by_duration"] == pytest.approx(50.0)
+
+
+async def test_projected_progress_by_duration_not_null_with_zero_cost_baseline(
+    client: AsyncClient,
+):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    await _create_task(client, admin_token, project_id, budgeted_cost=0)
+
+    await client.post(
+        f"/api/v1/projects/{project_id}/baselines",
+        json={"name": "Schedule-only plan"},
+        headers=auth_header(admin_token),
+    )
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/projected",
+        params={"status_date": "2026-09-10"},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    # The cost-weighted planned % is None (no task has cost) — but the
+    # duration-weighted one is always defined, since every task has a
+    # duration. This is exactly the gap the "Por plazo" section fills.
+    assert body["project_planned_percent_complete"] is None
+    assert body["project_planned_percent_complete_by_duration"] is not None
+
+
 async def test_projected_progress_excludes_wbs_parent_rollup_from_project_actual(
     client: AsyncClient,
 ):
@@ -310,6 +395,54 @@ async def test_progress_history_reconstructs_actual_from_snapshots(
 
     # No baseline saved in this test -> nothing to compare planned progress against.
     assert all(p["planned_percent_complete"] is None for p in body["points"])
+
+
+async def test_progress_history_by_duration_differs_from_by_cost(
+    client: AsyncClient, db_session: AsyncSession
+):
+    # Same asymmetric-cost, equal-duration setup as the projected-progress
+    # test — proves the history endpoint's "actual" series is independently
+    # duration-weighted too, not just the point-in-time /progress/projected.
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    task_a = await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Task A",
+        start_date="2026-08-01",
+        duration_days=1,
+        budgeted_cost=9000,
+    )
+    task_b = await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Task B",
+        start_date="2026-08-01",
+        duration_days=1,
+        budgeted_cost=1000,
+    )
+
+    today = date.today()
+    await task_progress_snapshot_repository.upsert_many(
+        db_session, project_id, today, [(task_a["id"], 100.0), (task_b["id"], 0.0)]
+    )
+    await db_session.commit()
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/progress/history",
+        params={"start_date": today, "end_date": today, "interval_days": 7},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200, response.text
+    point = response.json()["points"][0]
+    # Cost-weighted: (100*9000 + 0*1000) / 10000 = 90%.
+    assert point["actual_percent_complete"] == pytest.approx(90.0)
+    # Duration-weighted: (100*1 + 0*1) / 2 = 50%, both tasks are 1 day.
+    assert point["actual_percent_complete_by_duration"] == pytest.approx(50.0)
 
 
 async def test_progress_history_has_planned_values_with_a_baseline(client: AsyncClient):

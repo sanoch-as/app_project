@@ -63,6 +63,53 @@ function ProgressKpi({
   );
 }
 
+/** One "planned vs. actual" pair of KPI cards, weighted either by cost or
+ * by duration (ADR-033) — the Forecast tab renders this twice, once per
+ * section, so the comparison logic (which icon/tone to use) lives here
+ * instead of being duplicated at each call site. */
+function ForecastKpiSection({
+  title,
+  hint,
+  plannedLabel,
+  actualLabel,
+  planned,
+  actual,
+  note,
+}: {
+  title: string;
+  hint: string;
+  plannedLabel: string;
+  actualLabel: string;
+  planned: number | null;
+  actual: number;
+  note?: string;
+}) {
+  const { t } = useTranslation();
+  return (
+    <div>
+      <div className="mb-2">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-jira-textSub">{title}</h3>
+        <p className="text-xs text-jira-textSub">{hint}</p>
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <ProgressKpi
+          label={plannedLabel}
+          value={planned !== null ? `${planned.toFixed(1)}%` : t("forecast.notAvailable")}
+          icon={CalendarClock}
+          tone="neutral"
+        />
+        <ProgressKpi
+          label={actualLabel}
+          value={`${actual.toFixed(1)}%`}
+          icon={planned !== null && actual < planned ? TrendingDown : TrendingUp}
+          tone={planned === null ? "neutral" : actual >= planned ? "good" : "bad"}
+        />
+      </div>
+      {note && <p className="mt-2 text-xs text-jira-textSub">{note}</p>}
+    </div>
+  );
+}
+
 export function ProjectForecastTab() {
   const { t } = useTranslation();
   const formatDate = useDateFormat();
@@ -195,38 +242,29 @@ export function ProjectForecastTab() {
 
       {data && data.baseline_id !== null && (
         <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <ProgressKpi
-              label={t("forecast.plannedAsOf", { date: statusDate })}
-              value={
-                data.project_planned_percent_complete !== null
-                  ? `${data.project_planned_percent_complete.toFixed(1)}%`
-                  : t("forecast.notAvailable")
-              }
-              icon={CalendarClock}
-              tone="neutral"
-            />
-            <ProgressKpi
-              label={t("forecast.actualToday")}
-              value={`${data.project_actual_percent_complete.toFixed(1)}%`}
-              icon={
-                data.project_planned_percent_complete !== null &&
-                data.project_actual_percent_complete < data.project_planned_percent_complete
-                  ? TrendingDown
-                  : TrendingUp
-              }
-              tone={
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <ForecastKpiSection
+              title={t("forecast.byCostTitle")}
+              hint={t("forecast.byCostHint")}
+              plannedLabel={t("forecast.plannedAsOf", { date: statusDate })}
+              actualLabel={t("forecast.actualToday")}
+              planned={data.project_planned_percent_complete}
+              actual={data.project_actual_percent_complete}
+              note={
                 data.project_planned_percent_complete === null
-                  ? "neutral"
-                  : data.project_actual_percent_complete >= data.project_planned_percent_complete
-                    ? "good"
-                    : "bad"
+                  ? t("forecast.noCostData")
+                  : undefined
               }
+            />
+            <ForecastKpiSection
+              title={t("forecast.byDurationTitle")}
+              hint={t("forecast.byDurationHint")}
+              plannedLabel={t("forecast.plannedAsOf", { date: statusDate })}
+              actualLabel={t("forecast.actualToday")}
+              planned={data.project_planned_percent_complete_by_duration}
+              actual={data.project_actual_percent_complete_by_duration}
             />
           </div>
-          {data.project_planned_percent_complete === null && (
-            <p className="text-xs text-jira-textSub">{t("forecast.noCostData")}</p>
-          )}
           {data.baseline_name && (
             <p className="text-xs text-jira-textSub">{t("forecast.baseline", { name: data.baseline_name })}</p>
           )}
@@ -285,7 +323,26 @@ export function ProjectForecastTab() {
 
             {historyLoading && <LoadingSpinner label={t("forecast.buildingChart")} />}
             <ErrorMessage error={historyError} />
-            {history && <PercentCompleteChart points={history.points} />}
+            {history && (
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                <PercentCompleteChart
+                  title={t("forecast.chartTitle")}
+                  points={history.points.map((p) => ({
+                    checkpoint: p.checkpoint,
+                    planned: p.planned_percent_complete,
+                    actual: p.actual_percent_complete,
+                  }))}
+                />
+                <PercentCompleteChart
+                  title={t("forecast.chartTitleByDuration")}
+                  points={history.points.map((p) => ({
+                    checkpoint: p.checkpoint,
+                    planned: p.planned_percent_complete_by_duration,
+                    actual: p.actual_percent_complete_by_duration,
+                  }))}
+                />
+              </div>
+            )}
           </div>
         </>
       )}

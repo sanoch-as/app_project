@@ -27,6 +27,7 @@ from app.services.evm import (
     percent_complete_at_or_before,
     planned_percent_complete_by_task,
     planned_percent_complete_project,
+    planned_percent_complete_project_by_duration,
 )
 from app.services.scurve import SCurvePoint, build_weekly_scurve
 
@@ -53,6 +54,8 @@ class ProjectedProgress:
     baseline_name: str | None
     project_planned_percent_complete: float | None
     project_actual_percent_complete: float
+    project_planned_percent_complete_by_duration: float | None
+    project_actual_percent_complete_by_duration: float
     tasks: list[TaskProjectedProgress]
 
 
@@ -139,10 +142,14 @@ async def get_projected_progress(
 
     planned_by_task = planned_percent_complete_by_task(baseline_tasks, status_date)
     project_planned = planned_percent_complete_project(baseline_tasks, status_date)
+    project_planned_by_duration = planned_percent_complete_project_by_duration(
+        baseline_tasks, status_date
+    )
     baseline_dates_by_task = {bt.task_id: bt for bt in baseline_tasks}
 
     total_budgeted = sum(ti.budgeted_cost for ti in task_inputs)
     project_actual = (compute_ev(task_inputs) / total_budgeted * 100) if total_budgeted else 0.0
+    project_actual_by_duration = rollup.duration_weighted_percent_complete(rollup.leaf_tasks(tasks))
 
     task_rows = [
         TaskProjectedProgress(
@@ -169,6 +176,8 @@ async def get_projected_progress(
         baseline_name=active_baseline.name if active_baseline else None,
         project_planned_percent_complete=project_planned,
         project_actual_percent_complete=project_actual,
+        project_planned_percent_complete_by_duration=project_planned_by_duration,
+        project_actual_percent_complete_by_duration=project_actual_by_duration,
         tasks=task_rows,
     )
 
@@ -191,6 +200,7 @@ async def get_percent_complete_history(
     tasks, task_inputs, baseline_tasks, _ = await _load_evm_inputs(db, project.id)
     today = _today()
     budgeted_cost_by_task = {ti.id: ti.budgeted_cost for ti in task_inputs}
+    duration_by_task = {t.id: t.duration_days for t in rollup.leaf_tasks(tasks)}
 
     raw_snapshots = await task_progress_snapshot_repository.list_up_to_date(
         db, project.id, end_date
@@ -221,11 +231,35 @@ async def get_percent_complete_history(
             total_cost += cost
         return (weighted_sum / total_cost * 100) if total_cost else None
 
+    def actual_at_by_duration(checkpoint: date) -> float | None:
+        # Mirrors actual_at above, weighting by duration instead of cost —
+        # same None-when-undefined convention (a checkpoint where every task
+        # with a snapshot happens to have zero duration is rare enough not
+        # to need the "current state" functions' plain-average fallback).
+        if checkpoint > today:
+            return None
+        weighted_sum = 0.0
+        total_duration = 0
+        for task in tasks:
+            duration = duration_by_task.get(task.id)
+            if duration is None:
+                continue  # WBS parent task — excluded, see leaf_ids above
+            pct = percent_complete_at_or_before(snapshots_by_task.get(task.id, []), checkpoint)
+            if pct is None:
+                continue
+            weighted_sum += pct * duration
+            total_duration += duration
+        return (weighted_sum / total_duration) if total_duration else None
+
     def build_point(checkpoint: date) -> PercentCompletePoint:
         return PercentCompletePoint(
             checkpoint=checkpoint,
             planned_percent_complete=planned_percent_complete_project(baseline_tasks, checkpoint),
             actual_percent_complete=actual_at(checkpoint),
+            planned_percent_complete_by_duration=planned_percent_complete_project_by_duration(
+                baseline_tasks, checkpoint
+            ),
+            actual_percent_complete_by_duration=actual_at_by_duration(checkpoint),
         )
 
     points = [build_point(start_date)]

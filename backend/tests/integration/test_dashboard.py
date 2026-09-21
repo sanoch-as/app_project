@@ -84,20 +84,21 @@ async def test_dashboard_percent_complete_excludes_wbs_parent_rollup(client: Asy
         parent_task_id=parent["id"],
         budgeted_cost=200,
     )
-    # Unrelated top-level task, untouched (0% complete, cost 1000) — needed so a
-    # bug that double-counts the parent's rolled-up cost/percent alongside its
-    # children would actually shift the ratio (with only the parent/children
-    # group in the project, doubling both sides of the ratio cancels out).
-    await _create_task(client, admin_token, project_id, name="Unrelated", budgeted_cost=1000)
+    # Unrelated top-level task, untouched (0% complete) — needed so a bug
+    # that double-counts the parent's rolled-up duration/percent alongside
+    # its children would actually shift the ratio (with only the
+    # parent/children group in the project, doubling both sides cancels out).
+    await _create_task(client, admin_token, project_id, name="Unrelated")
 
     response = await client.get(
         f"/api/v1/projects/{project_id}/dashboard", headers=auth_header(admin_token)
     )
     assert response.status_code == 200, response.text
-    # Leaf-only weighted average: (800*1 + 200*0 + 1000*0) / (800+200+1000) = 40%.
-    # Counting the parent's own rolled-up cost/percent on top would double its
-    # children's contribution and skew this to 53.33%.
-    assert response.json()["percent_complete"] == pytest.approx(40.0)
+    # Leaf-only, duration-weighted average (all three leaves have the same
+    # 5-day duration, so this is just a plain average): (100+0+0)/3 = 33.33%.
+    # Counting the parent's own rolled-up duration/percent on top would
+    # double its children's contribution and skew this to 37.5%.
+    assert response.json()["percent_complete"] == pytest.approx(100 / 3)
 
 
 async def test_project_dashboard_lists_upcoming_milestones(client: AsyncClient):

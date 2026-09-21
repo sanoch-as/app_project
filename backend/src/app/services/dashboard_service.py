@@ -21,17 +21,14 @@ UPCOMING_MILESTONES_LIMIT = 5
 
 
 def _overall_percent_complete(tasks: list[Task]) -> float:
-    """Cost-weighted overall progress: EV / total budgeted cost. A simple
-    average of each task's percent_complete would let a tiny task skew the
-    number as much as the project's biggest deliverable. WBS parent tasks
-    are excluded (`rollup.leaf_tasks`) — their cost/percent are already a
+    """Duration-weighted overall progress — MS Project's convention (ADR-032),
+    via `rollup.duration_weighted_percent_complete`. Deliberately *not*
+    cost-weighted: `budgeted_cost` is frequently left at its 0 default,
+    which would freeze this at 0% for any project that doesn't track cost,
+    unlike duration, which every task always has. WBS parent tasks are
+    excluded (`rollup.leaf_tasks`) — their duration/percent are already a
     roll-up of their children, so including them would double-count."""
-    leaves = rollup.leaf_tasks(tasks)
-    total_budgeted = sum(float(t.budgeted_cost) for t in leaves)
-    if not total_budgeted:
-        return 0.0
-    earned = sum((float(t.percent_complete) / 100) * float(t.budgeted_cost) for t in leaves)
-    return earned / total_budgeted * 100
+    return rollup.duration_weighted_percent_complete(rollup.leaf_tasks(tasks))
 
 
 def _overdue_tasks(tasks: list[Task], today: datetime) -> list[Task]:

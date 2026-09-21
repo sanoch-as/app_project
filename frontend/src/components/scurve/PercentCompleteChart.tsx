@@ -10,9 +10,24 @@ import {
 } from "recharts";
 import { useTranslation } from "react-i18next";
 import { chartColors } from "@/styles/chartColors";
-import type { PercentCompleteSeriesPointRead } from "@/types/api";
 
-export function PercentCompleteChart({ points }: { points: PercentCompleteSeriesPointRead[] }) {
+export interface PercentCompleteChartPoint {
+  checkpoint: string;
+  planned: number | null;
+  actual: number | null;
+}
+
+interface PercentCompleteChartProps {
+  points: PercentCompleteChartPoint[];
+  title: string;
+}
+
+/** Generic planned-vs-actual line chart — deliberately doesn't know about
+ * cost vs. duration weighting (ADR-033): the caller picks which pair of
+ * fields to read from the API response and passes an already-mapped
+ * `{checkpoint, planned, actual}[]`, so this same component renders both
+ * the Forecast tab's "Por costo" and "Por plazo" sections. */
+export function PercentCompleteChart({ points, title }: PercentCompleteChartProps) {
   const { t, i18n } = useTranslation();
   const dateFormatter = new Intl.DateTimeFormat(i18n.language, { day: "numeric", month: "short" });
 
@@ -26,13 +41,13 @@ export function PercentCompleteChart({ points }: { points: PercentCompleteSeries
 
   const data = points.map((p) => ({
     checkpoint: dateFormatter.format(new Date(`${p.checkpoint}T00:00:00`)),
-    planned: p.planned_percent_complete,
-    actual: p.actual_percent_complete,
+    planned: p.planned,
+    actual: p.actual,
   }));
 
   return (
     <div className="card p-4">
-      <h3 className="mb-2 text-sm font-semibold text-jira-text">{t("forecast.chartTitle")}</h3>
+      <h3 className="mb-2 text-sm font-semibold text-jira-text">{title}</h3>
       <ResponsiveContainer width="100%" height={320}>
         <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} />

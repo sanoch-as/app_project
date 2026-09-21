@@ -384,6 +384,8 @@ export interface ProjectedProgressResponse {
   baseline_name: string | null;
   project_planned_percent_complete: number | null;
   project_actual_percent_complete: number;
+  project_planned_percent_complete_by_duration: number | null;
+  project_actual_percent_complete_by_duration: number;
   tasks: TaskPlannedProgressRead[];
 }
 
@@ -391,6 +393,8 @@ export interface PercentCompleteSeriesPointRead {
   checkpoint: string;
   planned_percent_complete: number | null;
   actual_percent_complete: number | null;
+  planned_percent_complete_by_duration: number | null;
+  actual_percent_complete_by_duration: number | null;
 }
 
 export interface PercentCompleteHistoryResponse {

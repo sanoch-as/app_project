@@ -1,5 +1,4 @@
 import { useMemo, useState, type FormEvent } from "react";
-import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
@@ -23,6 +22,32 @@ interface AssigneeRow {
   userId: string;
   selected: boolean;
   allocation: number;
+}
+
+/** One "label: value" row in the sidebar, Jira-style — label at a fixed
+ * width, value flexible, generous vertical padding instead of borders. */
+function DetailRow({
+  label,
+  htmlFor,
+  children,
+}: {
+  label: string;
+  htmlFor?: string;
+  children: React.ReactNode;
+}) {
+  const labelClassName = "pt-1.5 text-xs font-medium text-jira-textSub";
+  return (
+    <div className="grid grid-cols-[104px_1fr] items-start gap-3 py-2">
+      {htmlFor ? (
+        <label htmlFor={htmlFor} className={labelClassName}>
+          {label}
+        </label>
+      ) : (
+        <span className={labelClassName}>{label}</span>
+      )}
+      <div className="min-w-0">{children}</div>
+    </div>
+  );
 }
 
 export function TaskFormModal({
@@ -54,6 +79,7 @@ export function TaskFormModal({
     initial?.estimated_hours != null ? String(initial.estimated_hours) : "",
   );
   const [budgetedCost, setBudgetedCost] = useState(String(initial?.budgeted_cost ?? 0));
+  const [percentComplete, setPercentComplete] = useState(initial?.percent_complete ?? 0);
 
   const [assignees, setAssignees] = useState<AssigneeRow[]>(() =>
     members.map((m) => {
@@ -114,6 +140,7 @@ export function TaskFormModal({
             ...base,
             start_date: startDate,
             budgeted_cost: Number(budgetedCost),
+            percent_complete: Number(percentComplete),
             ...(isMilestone
               ? { duration_days: 0 }
               : lastDateFieldTouched === "endDate"
@@ -144,215 +171,219 @@ export function TaskFormModal({
           : t("tasks.form.newTitle")
       }
       onClose={onClose}
-      widthClassName="max-w-2xl"
+      widthClassName="max-w-5xl"
     >
       {initial && onNavigate && (
         <TaskBreadcrumb task={initial} allTasks={allTasks} onNavigate={onNavigate} />
       )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label className="label" htmlFor="task_name">
-            {t("common.name")}
-          </label>
-          <input
-            id="task_name"
-            required
-            className="input"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-
-        <div>
-          <label className="label" htmlFor="task_description">
-            {t("common.description")}
-          </label>
-          <textarea
-            id="task_description"
-            rows={2}
-            className="input"
-            value={description ?? ""}
-            onChange={(e) => setDescription(e.target.value)}
-          />
-        </div>
-
-        {!initial && (
-          <div>
-            <label className="label" htmlFor="parent_task">
-              {t("tasks.form.wbsParent")}
-            </label>
-            <select
-              id="parent_task"
-              className="input"
-              value={parentTaskId}
-              onChange={(e) => setParentTaskId(e.target.value)}
-            >
-              <option value="">{t("tasks.form.topLevel")}</option>
-              {parentOptions.map((task) => (
-                <option key={task.id} value={task.id}>
-                  {task.wbs_code} — {task.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className={clsx("grid gap-3", initial ? "grid-cols-3" : "grid-cols-2")}>
-          <div>
-            <label className="label" htmlFor="start_date">
-              {t("common.startDate")}
-            </label>
+      <form onSubmit={handleSubmit}>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_296px]">
+          <div className="min-w-0 space-y-6">
             <input
-              id="start_date"
-              type="date"
+              id="task_name"
               required
-              disabled={hasChildren}
-              className="input disabled:bg-jira-hover"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              placeholder={t("common.name")}
+              aria-label={t("common.name")}
+              className="w-full rounded-md border border-transparent bg-transparent px-1 text-xl font-semibold text-jira-text outline-none focus:border-jira-border focus:bg-white"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
             />
-          </div>
-          <div>
-            <label className="label" htmlFor="duration_days">
-              {t("tasks.form.durationDays")}
-            </label>
-            <input
-              id="duration_days"
-              type="number"
-              min={0}
-              required
-              disabled={isMilestone || hasChildren}
-              className="input disabled:bg-jira-hover"
-              value={isMilestone ? 0 : durationDays}
-              onChange={(e) => {
-                setDurationDays(Number(e.target.value));
-                setLastDateFieldTouched("duration");
-              }}
-            />
-          </div>
-          {initial && (
+
             <div>
-              <label className="label" htmlFor="end_date">
-                {t("tasks.form.endDate")}
+              <label className="label" htmlFor="task_description">
+                {t("common.description")}
               </label>
+              <textarea
+                id="task_description"
+                rows={4}
+                className="input"
+                value={description ?? ""}
+                onChange={(e) => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <aside className="space-y-1 lg:border-l lg:border-jira-borderSoft lg:pl-6">
+            <h3 className="mb-1 text-xs font-bold uppercase tracking-wide text-jira-textSub">
+              {t("tasks.form.details")}
+            </h3>
+
+            {!initial && (
+              <DetailRow label={t("tasks.form.wbsParent")} htmlFor="parent_task">
+                <select
+                  id="parent_task"
+                  className="input"
+                  value={parentTaskId}
+                  onChange={(e) => setParentTaskId(e.target.value)}
+                >
+                  <option value="">{t("tasks.form.topLevel")}</option>
+                  {parentOptions.map((task) => (
+                    <option key={task.id} value={task.id}>
+                      {task.wbs_code} — {task.name}
+                    </option>
+                  ))}
+                </select>
+              </DetailRow>
+            )}
+
+            <DetailRow label={t("tasks.table.priority")} htmlFor="priority">
+              <select
+                id="priority"
+                className="input"
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as TaskPriority)}
+              >
+                {PRIORITIES.map((p) => (
+                  <option key={p} value={p}>
+                    {t(`enums.taskPriority.${p}`)}
+                  </option>
+                ))}
+              </select>
+            </DetailRow>
+
+            <DetailRow label={t("common.startDate")} htmlFor="start_date">
               <input
-                id="end_date"
+                id="start_date"
                 type="date"
+                required
+                disabled={hasChildren}
+                className="input disabled:bg-jira-hover"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </DetailRow>
+
+            <DetailRow label={t("tasks.form.durationDays")} htmlFor="duration_days">
+              <input
+                id="duration_days"
+                type="number"
+                min={0}
                 required
                 disabled={isMilestone || hasChildren}
                 className="input disabled:bg-jira-hover"
-                value={isMilestone ? startDate : endDate}
+                value={isMilestone ? 0 : durationDays}
                 onChange={(e) => {
-                  setEndDate(e.target.value);
-                  setLastDateFieldTouched("endDate");
+                  setDurationDays(Number(e.target.value));
+                  setLastDateFieldTouched("duration");
                 }}
               />
-            </div>
-          )}
-        </div>
-        {hasChildren ? (
-          <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.rollupNotice")}</p>
-        ) : (
-          <p className="-mt-2 text-xs text-jira-textSub">{t("tasks.form.endDateHint")}</p>
-        )}
+            </DetailRow>
 
-        <label className="flex items-center gap-2 text-sm text-jira-text">
-          <input
-            type="checkbox"
-            checked={isMilestone}
-            onChange={(e) => setIsMilestone(e.target.checked)}
-          />
-          {t("tasks.form.isMilestone")}
-        </label>
+            {initial && (
+              <DetailRow label={t("tasks.form.endDate")} htmlFor="end_date">
+                <input
+                  id="end_date"
+                  type="date"
+                  required
+                  disabled={isMilestone || hasChildren}
+                  className="input disabled:bg-jira-hover"
+                  value={isMilestone ? startDate : endDate}
+                  onChange={(e) => {
+                    setEndDate(e.target.value);
+                    setLastDateFieldTouched("endDate");
+                  }}
+                />
+              </DetailRow>
+            )}
+            <p className="pb-1 text-xs text-jira-textSub">
+              {hasChildren ? t("tasks.form.rollupNotice") : t("tasks.form.endDateHint")}
+            </p>
 
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="label" htmlFor="priority">
-              {t("tasks.table.priority")}
-            </label>
-            <select
-              id="priority"
-              className="input"
-              value={priority}
-              onChange={(e) => setPriority(e.target.value as TaskPriority)}
-            >
-              {PRIORITIES.map((p) => (
-                <option key={p} value={p}>
-                  {t(`enums.taskPriority.${p}`)}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="estimated_hours">
-              {t("tasks.form.estimatedHours")}
-            </label>
-            <input
-              id="estimated_hours"
-              type="number"
-              min={0}
-              step={0.5}
-              className="input"
-              value={estimatedHours}
-              onChange={(e) => setEstimatedHours(e.target.value)}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="budgeted_cost">
-              {t("tasks.form.budgetedCost")}
-            </label>
-            <input
-              id="budgeted_cost"
-              type="number"
-              min={0}
-              step={0.01}
-              disabled={hasChildren}
-              className="input disabled:bg-jira-hover"
-              value={budgetedCost}
-              onChange={(e) => setBudgetedCost(e.target.value)}
-            />
-          </div>
-        </div>
+            <DetailRow label={t("tasks.form.milestoneLabel")}>
+              <label className="flex items-center gap-2 pt-1.5 text-sm text-jira-text">
+                <input
+                  type="checkbox"
+                  checked={isMilestone}
+                  onChange={(e) => setIsMilestone(e.target.checked)}
+                />
+                {t("tasks.form.isMilestone")}
+              </label>
+            </DetailRow>
 
-        <div>
-          <span className="label">{t("tasks.form.assignees")}</span>
-          {members.length === 0 ? (
-            <p className="text-sm text-jira-textSub">{t("tasks.form.noMembersYet")}</p>
-          ) : (
-            <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-md border border-jira-border p-2">
-              {assignees.map((row) => {
-                const member = members.find((m) => m.id === row.userId)!;
-                return (
-                  <div key={row.userId} className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={row.selected}
-                      onChange={() => toggleAssignee(row.userId)}
-                    />
-                    <span className="flex-1 text-jira-text">{member.full_name}</span>
-                    {row.selected && (
-                      <span className="flex items-center gap-1 text-xs text-jira-textSub">
+            <DetailRow label={t("tasks.form.estimatedHours")} htmlFor="estimated_hours">
+              <input
+                id="estimated_hours"
+                type="number"
+                min={0}
+                step={0.5}
+                className="input"
+                value={estimatedHours}
+                onChange={(e) => setEstimatedHours(e.target.value)}
+              />
+            </DetailRow>
+
+            <DetailRow label={t("tasks.form.budgetedCost")} htmlFor="budgeted_cost">
+              <input
+                id="budgeted_cost"
+                type="number"
+                min={0}
+                step={0.01}
+                disabled={hasChildren}
+                className="input disabled:bg-jira-hover"
+                value={budgetedCost}
+                onChange={(e) => setBudgetedCost(e.target.value)}
+              />
+            </DetailRow>
+
+            {initial && (
+              <DetailRow label={t("tasks.table.percentDone")} htmlFor="percent_complete">
+                <input
+                  id="percent_complete"
+                  type="number"
+                  min={0}
+                  max={100}
+                  step={1}
+                  disabled={hasChildren}
+                  className="input disabled:bg-jira-hover"
+                  value={percentComplete}
+                  onChange={(e) => setPercentComplete(Number(e.target.value))}
+                />
+              </DetailRow>
+            )}
+
+            <div className="pt-4">
+              <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-jira-textSub">
+                {t("tasks.form.assignees")}
+              </h3>
+              {members.length === 0 ? (
+                <p className="text-sm text-jira-textSub">{t("tasks.form.noMembersYet")}</p>
+              ) : (
+                <div className="max-h-48 space-y-2 overflow-y-auto rounded-md border border-jira-border p-2">
+                  {assignees.map((row) => {
+                    const member = members.find((m) => m.id === row.userId)!;
+                    return (
+                      <div key={row.userId} className="flex items-center gap-2 text-sm">
                         <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          className="input w-16 py-0.5"
-                          value={row.allocation}
-                          onChange={(e) => setAllocation(row.userId, Number(e.target.value))}
+                          type="checkbox"
+                          checked={row.selected}
+                          onChange={() => toggleAssignee(row.userId)}
                         />
-                        %
-                      </span>
-                    )}
-                  </div>
-                );
-              })}
+                        <span className="flex-1 truncate text-jira-text">{member.full_name}</span>
+                        {row.selected && (
+                          <span className="flex items-center gap-1 text-xs text-jira-textSub">
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              className="input w-16 py-0.5"
+                              value={row.allocation}
+                              onChange={(e) => setAllocation(row.userId, Number(e.target.value))}
+                            />
+                            %
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-          )}
+          </aside>
         </div>
 
         <ErrorMessage error={mutation.error} />
 
-        <div className="flex justify-end gap-2 border-t border-jira-borderSoft pt-3">
+        <div className="mt-8 flex justify-end gap-2 border-t border-jira-borderSoft pt-4">
           <button type="button" className="btn-secondary" onClick={onClose}>
             {t("common.cancel")}
           </button>
@@ -367,7 +398,7 @@ export function TaskFormModal({
       </form>
 
       {initial && (
-        <div className="mt-5 border-t border-jira-borderSoft pt-4">
+        <div className="mt-6 border-t border-jira-borderSoft pt-5">
           <CommentThread taskId={initial.id} members={members} />
         </div>
       )}

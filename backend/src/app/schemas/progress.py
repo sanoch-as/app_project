@@ -86,6 +86,8 @@ class ProjectedProgressResponse(BaseModel):
     baseline_name: str | None
     project_planned_percent_complete: float | None
     project_actual_percent_complete: float
+    project_planned_percent_complete_by_duration: float | None
+    project_actual_percent_complete_by_duration: float
     tasks: list[TaskPlannedProgressRead]
 
     @classmethod
@@ -96,6 +98,12 @@ class ProjectedProgressResponse(BaseModel):
             baseline_name=result.baseline_name,
             project_planned_percent_complete=result.project_planned_percent_complete,
             project_actual_percent_complete=result.project_actual_percent_complete,
+            project_planned_percent_complete_by_duration=(
+                result.project_planned_percent_complete_by_duration
+            ),
+            project_actual_percent_complete_by_duration=(
+                result.project_actual_percent_complete_by_duration
+            ),
             tasks=[TaskPlannedProgressRead.from_row(t) for t in result.tasks],
         )
 
@@ -104,6 +112,8 @@ class PercentCompleteSeriesPointRead(BaseModel):
     checkpoint: date
     planned_percent_complete: float | None
     actual_percent_complete: float | None
+    planned_percent_complete_by_duration: float | None
+    actual_percent_complete_by_duration: float | None
 
     @classmethod
     def from_point(cls, point: PercentCompletePoint) -> "PercentCompleteSeriesPointRead":
@@ -111,6 +121,8 @@ class PercentCompleteSeriesPointRead(BaseModel):
             checkpoint=point.checkpoint,
             planned_percent_complete=point.planned_percent_complete,
             actual_percent_complete=point.actual_percent_complete,
+            planned_percent_complete_by_duration=point.planned_percent_complete_by_duration,
+            actual_percent_complete_by_duration=point.actual_percent_complete_by_duration,
         )
 
 

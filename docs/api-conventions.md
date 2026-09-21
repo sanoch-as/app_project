@@ -120,13 +120,21 @@ POST   /api/v1/progress/recalculate-all         (Authorization: Bearer <CRON_SEC
 - `POST /progress/recalculate-all` is the Vercel Cron target: no `organization_id` scoping (it iterates every `status=active` project system-wide), authenticated by `CRON_SECRET` instead of a user token, and calls the same per-project recalculation as the on-demand endpoint above.
 - `SPI`/`CPI` come back `null` (not `0` or omitted) whenever their denominator (`PV`/`AC` respectively) is `0` — most commonly, `SPI` is `null` for a project with no baseline yet.
 
+**Forecast — planned vs. actual % complete**
+```
+GET    /api/v1/projects/{id}/progress/projected?status_date=...
+GET    /api/v1/projects/{id}/progress/history?start_date=...&end_date=...&interval_days=...
+```
+- `GET .../progress/projected`: MS Project's "Status Date" projection — "planned" (baseline-derived, prorated to `status_date`) vs. "actual" (current `percent_complete`), both at the project level and per task. Every field comes in two flavors: cost-weighted (`project_planned_percent_complete`/`project_actual_percent_complete`, true PMI Earned Value — see ADR-013) and duration-weighted (`project_planned_percent_complete_by_duration`/`project_actual_percent_complete_by_duration`, MS Project's convention — see ADR-032/ADR-033), which the frontend renders as the Forecast tab's "Por costo"/"Por plazo" sections. The cost-weighted pair is `null`/uses `0.0` fallbacks when no task has a `budgeted_cost` (see ADR-032's "Deliberately left cost-weighted" note); the duration-weighted pair is only `null` when there's no baseline at all — use `baseline_id` (not the percent fields) to tell "no baseline" apart from "no cost data."
+- `GET .../progress/history`: the same cost/duration pairing, one point per `interval_days` step between `start_date` and `end_date` — see `PercentCompleteSeriesPointRead`.
+
 **Phase 6 — dashboards and report export**
 ```
 GET    /api/v1/dashboard/summary
 GET    /api/v1/projects/{id}/dashboard
 GET    /api/v1/projects/{id}/reports/export?type=tasks|worklogs|summary
 ```
-- `GET /dashboard/summary` (portfolio view): every project visible to the caller (admin: all in the org; member: only ones they belong to — same visibility rule as `GET /projects`), each with cost-weighted `percent_complete` (`EV / total budgeted cost`, not a plain average across tasks — a tiny task can't skew it as much as the biggest deliverable), live `spi`/`cpi`, and an overdue-task count. Unpaginated — a portfolio view is meant to show everything at a glance (section 4.1 point 4).
+- `GET /dashboard/summary` (portfolio view): every project visible to the caller (admin: all in the org; member: only ones they belong to — same visibility rule as `GET /projects`), each with duration-weighted `percent_complete` (MS Project's convention for a rolled-up % complete — `Σ(percent_complete × duration_days) / Σ(duration_days)` across the project's leaf tasks, not a plain average — a longer task moves it more than a short one; not cost-weighted, since `budgeted_cost` is frequently left unset, see ADR-032), live `spi`/`cpi`, and an overdue-task count. Unpaginated — a portfolio view is meant to show everything at a glance (section 4.1 point 4).
 - `GET /projects/{id}/dashboard`: same `percent_complete`/`spi`/`cpi` for one project, plus the full list of overdue tasks (`status != completed` and `end_date` in the past) and up to 5 upcoming milestones (`is_milestone = true`, `start_date` in the future, soonest first).
 - `GET /projects/{id}/reports/export`: one endpoint, three `type` values (section 7 lists a single export route, so the format/content is a query parameter rather than three separate endpoints) — `tasks`/`worklogs` return `text/csv` with a `Content-Disposition: attachment` header; `summary` returns a one-page `application/pdf` with the project's KPIs and the S-curve's numbers as a table (section 4.1 point 24 asks for "PDF simple," not a rendered chart).
 

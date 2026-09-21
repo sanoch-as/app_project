@@ -1,6 +1,8 @@
 import uuid
 from datetime import date
 
+import pytest
+
 from app.services.evm import (
     BaselineTaskEVMInput,
     TaskEVMInput,
@@ -12,6 +14,7 @@ from app.services.evm import (
     percent_complete_at_or_before,
     planned_percent_complete_by_task,
     planned_percent_complete_project,
+    planned_percent_complete_project_by_duration,
 )
 
 TASK_A = uuid.uuid4()
@@ -122,6 +125,28 @@ def test_planned_percent_complete_project_is_cost_weighted():
     ]
     result = planned_percent_complete_project(baseline_tasks, date(2026, 9, 16))
     assert result == 1000 / 4000 * 100
+
+
+def test_planned_percent_complete_project_by_duration_none_without_baseline():
+    assert planned_percent_complete_project_by_duration([], date(2026, 9, 16)) is None
+
+
+def test_planned_percent_complete_project_by_duration_is_duration_weighted_not_cost_weighted():
+    # Same asymmetric-cost trick as the cost-weighted test above, but with
+    # costs and date spans picked so the two weighting schemes give
+    # different answers, proving cost no longer factors in at all.
+    task_b = uuid.uuid4()
+    baseline_tasks = [
+        # 5-calendar-day span (9/1-9/5), fully elapsed by the status date —
+        # 100% of its span counts. Cost is huge but irrelevant here.
+        BaselineTaskEVMInput(TASK_A, date(2026, 9, 1), date(2026, 9, 5), 999999),
+        # 1-calendar-day span (9/20-9/20), not started yet — 0% of its span
+        # counts. Cost is tiny but, again, irrelevant.
+        BaselineTaskEVMInput(task_b, date(2026, 9, 20), date(2026, 9, 20), 1),
+    ]
+    result = planned_percent_complete_project_by_duration(baseline_tasks, date(2026, 9, 16))
+    # total_days = 5 + 1 = 6; weighted = 100*5 + 0*1 = 500; 500/6 = 83.33%.
+    assert result == pytest.approx(500 / 6)
 
 
 def test_percent_complete_at_or_before_none_without_any_snapshot():

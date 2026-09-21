@@ -325,8 +325,10 @@ async def test_creating_children_rolls_up_dates_and_cost_through_grandparent(cli
         assert rolled_up["budgeted_cost"] == 1000
         assert rolled_up["percent_complete"] == 0
 
-    # Completing child 1 (80% of the group's cost) should bubble a weighted
-    # 80% up through parent and grandparent.
+    # Completing child 1 (duration 1 of the group's 4 total, MS Project-style
+    # duration-weighted) should bubble a weighted 25% up through parent and
+    # grandparent — (100*1 + 0*3) / 4 = 25%, not 80% (that would be
+    # cost-weighted: 800 of the group's 1000 total cost).
     await client.patch(
         f"/api/v1/tasks/{child_one['id']}",
         json={"percent_complete": 100},
@@ -336,7 +338,41 @@ async def test_creating_children_rolls_up_dates_and_cost_through_grandparent(cli
         rolled_up = (
             await client.get(f"/api/v1/tasks/{task_id}", headers=auth_header(admin_token))
         ).json()
-        assert rolled_up["percent_complete"] == 80
+        assert rolled_up["percent_complete"] == 25
+
+
+async def test_rollup_percent_complete_updates_even_without_any_budgeted_cost(
+    client: AsyncClient,
+):
+    # Regression test: a parent's percent_complete used to freeze at 0%
+    # forever whenever none of its children had a budgeted_cost set (the
+    # cost-weighted formula divides by zero total cost) — it should instead
+    # fall back to a plain average across children.
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project["id"], name="Parent")
+    child = await _create_task(
+        client, admin_token, project["id"], name="Child", parent_task_id=parent["id"]
+    )
+    assert child["budgeted_cost"] == 0
+
+    rolled_up_before = (
+        await client.get(f"/api/v1/tasks/{parent['id']}", headers=auth_header(admin_token))
+    ).json()
+    assert rolled_up_before["percent_complete"] == 0
+
+    await client.patch(
+        f"/api/v1/tasks/{child['id']}",
+        json={"percent_complete": 60},
+        headers=auth_header(admin_token),
+    )
+
+    rolled_up_after = (
+        await client.get(f"/api/v1/tasks/{parent['id']}", headers=auth_header(admin_token))
+    ).json()
+    assert rolled_up_after["percent_complete"] == 60
 
 
 async def test_update_task_with_children_rejects_direct_rollup_field_edits(client: AsyncClient):

@@ -215,6 +215,7 @@ export const es: typeof en = {
     form: {
       editTitle: "Editar tarea — {{wbs}}",
       newTitle: "Nueva tarea",
+      details: "Detalles",
       wbsParent: "WBS padre",
       topLevel: "(nivel superior)",
       durationDays: "Duración (días laborales)",
@@ -223,6 +224,7 @@ export const es: typeof en = {
         "Edita la duración o la fecha de fin — la que cambies, la otra se recalcula usando el calendario laboral del proyecto.",
       rollupNotice:
         "Las fechas, duración, costo y progreso se calculan automáticamente a partir de las subtareas de esta tarea — arrastra una subtarea fuera (o elimínala) para poder editarlos directamente de nuevo.",
+      milestoneLabel: "Hito",
       isMilestone: "Este es un hito (marcador de duración 0)",
       estimatedHours: "Horas estimadas",
       budgetedCost: "Costo presupuestado",
@@ -282,6 +284,11 @@ export const es: typeof en = {
     notAvailable: "N/D",
     noCostData:
       "No se puede calcular el % planeado: se pondera por costo presupuestado y ninguna tarea de este proyecto tiene uno definido. Las fechas planeadas por tarea abajo sí reflejan la línea base.",
+    byCostTitle: "Por costo",
+    byCostHint: "Ponderado por costo presupuestado — Valor Ganado (EVM).",
+    byDurationTitle: "Por plazo",
+    byDurationHint: "Ponderado por duración de las tareas — convención de MS Project.",
+    chartTitleByDuration: "Planeado vs. Real, por plazo — % completado en el tiempo",
     baseline: "Línea base: {{name}}",
     key: "Clave",
     baselineWindow: "Ventana de la línea base",

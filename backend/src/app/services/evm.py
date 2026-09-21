@@ -86,6 +86,33 @@ def planned_percent_complete_project(
     return compute_pv(baseline_tasks, status_date) / total_planned_cost * 100
 
 
+def planned_percent_complete_project_by_duration(
+    baseline_tasks: list[BaselineTaskEVMInput], status_date: date
+) -> float | None:
+    """Schedule-based counterpart to `planned_percent_complete_project` — MS
+    Project's duration-weighted convention (see ADR-032/ADR-033) applied to
+    the project-level planned %: weights each task's own date-prorated
+    fraction (same `_prorated_fraction` used per-task by
+    `planned_percent_complete_by_task`) by its planned calendar-day span
+    (`planned_end_date - planned_start_date + 1`) instead of its planned
+    cost, so a project that doesn't track cost still gets a meaningful
+    "planned as of status_date" number for the Forecast tab's schedule-based
+    section. `None` only when there's no baseline at all (`baseline_tasks`
+    empty) — unlike the cost-weighted version, a real date span is never
+    zero, so no further fallback is needed."""
+    if not baseline_tasks:
+        return None
+    total_days = sum(
+        (bt.planned_end_date - bt.planned_start_date).days + 1 for bt in baseline_tasks
+    )
+    weighted = sum(
+        _prorated_fraction(bt.planned_start_date, bt.planned_end_date, status_date)
+        * ((bt.planned_end_date - bt.planned_start_date).days + 1)
+        for bt in baseline_tasks
+    )
+    return weighted / total_days * 100
+
+
 @dataclass(frozen=True)
 class TaskPercentSnapshot:
     task_id: uuid.UUID
@@ -98,6 +125,8 @@ class PercentCompletePoint:
     checkpoint: date
     planned_percent_complete: float | None
     actual_percent_complete: float | None
+    planned_percent_complete_by_duration: float | None
+    actual_percent_complete_by_duration: float | None
 
 
 def percent_complete_at_or_before(

@@ -20,6 +20,7 @@ from app.services.working_calendar import WorkingCalendar
 class RollupChildInput:
     start_date: date
     end_date: date
+    duration_days: int
     budgeted_cost: float
     percent_complete: float
 
@@ -34,20 +35,27 @@ class RollupResult:
 
 
 def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) -> RollupResult:
-    """`percent_complete` is cost-weighted (EV / total budgeted cost), same
-    criterion as dashboard_service._overall_percent_complete — a tiny child
-    task shouldn't skew the parent's progress as much as its biggest one."""
+    """`percent_complete` is duration-weighted — MS Project's own convention
+    for a summary task's rolled-up % complete (`Σ(duration × %complete) /
+    Σ(duration)`): a longer subtask should move the parent's progress more
+    than a short one. Deliberately *not* cost-weighted (unlike
+    `dashboard_service._overall_percent_complete`'s portfolio-level EVM
+    metric) — every task always has a duration, but `budgeted_cost` is
+    frequently left at its 0 default, which would otherwise freeze the
+    parent at 0% forever regardless of how far along its children actually
+    are. Falls back to a plain average when every child has zero duration
+    (an all-milestones group), where the weighted formula is undefined
+    (0/0)."""
     start_date = min(c.start_date for c in children)
     end_date = max(c.end_date for c in children)
     budgeted_cost = sum(c.budgeted_cost for c in children)
-    if budgeted_cost:
+    total_duration = sum(c.duration_days for c in children)
+    if total_duration:
         percent_complete = (
-            sum((c.percent_complete / 100) * c.budgeted_cost for c in children)
-            / budgeted_cost
-            * 100
+            sum(c.percent_complete * c.duration_days for c in children) / total_duration
         )
     else:
-        percent_complete = 0.0
+        percent_complete = sum(c.percent_complete for c in children) / len(children)
 
     return RollupResult(
         start_date=start_date,
@@ -56,6 +64,22 @@ def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) 
         budgeted_cost=budgeted_cost,
         percent_complete=percent_complete,
     )
+
+
+def duration_weighted_percent_complete(tasks: list[Task]) -> float:
+    """Σ(percent_complete × duration_days) / Σ(duration_days) — MS Project's
+    duration-weighted convention (see ADR-032, ADR-033), applied to a flat
+    list of tasks rather than a parent/children roll-up. Shared by
+    `dashboard_service` (a project's overall % complete) and
+    `progress_service` (the Forecast tab's schedule-based "Por plazo"
+    section) so the formula lives in one place. Falls back to a plain
+    average when every task has zero duration; `0.0` for an empty list."""
+    if not tasks:
+        return 0.0
+    total_duration = sum(t.duration_days for t in tasks)
+    if total_duration:
+        return sum(float(t.percent_complete) * t.duration_days for t in tasks) / total_duration
+    return sum(float(t.percent_complete) for t in tasks) / len(tasks)
 
 
 def leaf_tasks(tasks: list[Task]) -> list[Task]:
@@ -95,6 +119,7 @@ async def propagate_rollup_to_ancestors(
                 RollupChildInput(
                     start_date=child.start_date,
                     end_date=child.end_date,
+                    duration_days=child.duration_days,
                     budgeted_cost=float(child.budgeted_cost),
                     percent_complete=float(child.percent_complete),
                 )

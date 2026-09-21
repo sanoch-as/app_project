@@ -212,6 +212,7 @@ export const en = {
     form: {
       editTitle: "Edit task — {{wbs}}",
       newTitle: "New task",
+      details: "Details",
       wbsParent: "WBS parent",
       topLevel: "(top level)",
       durationDays: "Duration (working days)",
@@ -220,6 +221,7 @@ export const en = {
         "Edit duration or end date — whichever you change, the other is recalculated from the project's working calendar.",
       rollupNotice:
         "Dates, duration, cost and progress are computed automatically from this task's subtasks — drag a subtask out (or delete it) to edit them directly again.",
+      milestoneLabel: "Milestone",
       isMilestone: "This is a milestone (0-duration marker)",
       estimatedHours: "Estimated hours",
       budgetedCost: "Budgeted cost",
@@ -279,6 +281,11 @@ export const en = {
     notAvailable: "N/A",
     noCostData:
       "Planned % can't be calculated — it's weighted by budgeted cost and no task in this project has one set. Per-task planned dates below still reflect the baseline.",
+    byCostTitle: "By cost",
+    byCostHint: "Weighted by budgeted cost — Earned Value (EVM).",
+    byDurationTitle: "By duration",
+    byDurationHint: "Weighted by task duration — MS Project's convention.",
+    chartTitleByDuration: "Planned vs. Real, by duration — % complete over time",
     baseline: "Baseline: {{name}}",
     key: "Key",
     baselineWindow: "Baseline window",
