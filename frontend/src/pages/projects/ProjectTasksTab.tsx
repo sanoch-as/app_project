@@ -295,6 +295,7 @@ export function ProjectTasksTab() {
           allTasks={allTasks}
           members={memberUsers}
           onClose={() => setEditingTask(null)}
+          onNavigate={(taskId) => setEditingTask(allTasks.find((t) => t.id === taskId) ?? null)}
         />
       )}
       {managingDeps && gantt && (

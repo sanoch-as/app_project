@@ -13,6 +13,7 @@ from app.models.mixins import TimestampMixin, UUIDPKMixin
 if TYPE_CHECKING:
     from app.models.dependency import TaskDependency
     from app.models.project import Project
+    from app.models.task_comment import TaskComment
     from app.models.user import User
     from app.models.worklog import Worklog
 
@@ -74,6 +75,9 @@ class Task(UUIDPKMixin, TimestampMixin, Base):
         back_populates="task", cascade="all, delete-orphan"
     )
     worklogs: Mapped[list["Worklog"]] = relationship(
+        back_populates="task", cascade="all, delete-orphan"
+    )
+    comments: Mapped[list["TaskComment"]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
     )
     predecessor_links: Mapped[list["TaskDependency"]] = relationship(

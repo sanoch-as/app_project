@@ -247,6 +247,10 @@ export const es: typeof en = {
       lagDays: "Holgura (días)",
       adding: "Agregando…",
     },
+    breadcrumb: {
+      ancestors: "Ancestros de la tarea",
+      subtasks: "Subtareas",
+    },
   },
   kanban: {
     loadingTasks: "Cargando tareas…",
@@ -346,6 +350,14 @@ export const es: typeof en = {
     noHoursYet: "Aún no hay horas registradas.",
     you: "Tú",
     user: "Usuario",
+  },
+  comments: {
+    title: "Comentarios ({{count}})",
+    noneYet: "Aún no hay comentarios.",
+    placeholder: "Agrega un comentario…",
+    add: "Comentar",
+    deleteComment: "Eliminar comentario",
+    confirmDelete: "¿Eliminar este comentario?",
   },
   members: {
     title: "Miembros del proyecto",

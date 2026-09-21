@@ -130,4 +130,12 @@ GET    /api/v1/projects/{id}/reports/export?type=tasks|worklogs|summary
 - `GET /projects/{id}/dashboard`: same `percent_complete`/`spi`/`cpi` for one project, plus the full list of overdue tasks (`status != completed` and `end_date` in the past) and up to 5 upcoming milestones (`is_milestone = true`, `start_date` in the future, soonest first).
 - `GET /projects/{id}/reports/export`: one endpoint, three `type` values (section 7 lists a single export route, so the format/content is a query parameter rather than three separate endpoints) — `tasks`/`worklogs` return `text/csv` with a `Content-Disposition: attachment` header; `summary` returns a one-page `application/pdf` with the project's KPIs and the S-curve's numbers as a table (section 4.1 point 24 asks for "PDF simple," not a rendered chart).
 
+**Task comments**
+```
+GET    /api/v1/tasks/{id}/comments
+POST   /api/v1/tasks/{id}/comments
+DELETE /api/v1/comments/{id}
+```
+- `user_id` is always the caller, never client-supplied — same rule as worklogs. Creating/listing requires the same project access as tasks and worklogs (admin: any project in org; member: only projects they belong to). Deleting requires being the comment's author or an admin (`403` otherwise). There is no edit endpoint — see ADR-031.
+
 This section grows with each phase; see `docs/DECISIONS.md` for the reasoning behind anything that isn't a literal transcription of spec section 7.

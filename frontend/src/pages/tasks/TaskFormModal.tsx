@@ -4,6 +4,8 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
+import { CommentThread } from "@/pages/tasks/CommentThread";
+import { TaskBreadcrumb } from "@/pages/tasks/TaskBreadcrumb";
 import type { TaskCreate, TaskPriority, TaskRead, TaskUpdate, UserRead } from "@/types/api";
 
 interface TaskFormModalProps {
@@ -12,6 +14,7 @@ interface TaskFormModalProps {
   allTasks: TaskRead[];
   members: UserRead[];
   onClose: () => void;
+  onNavigate?: (taskId: string) => void;
 }
 
 const PRIORITIES: TaskPriority[] = ["low", "medium", "high", "critical"];
@@ -22,7 +25,14 @@ interface AssigneeRow {
   allocation: number;
 }
 
-export function TaskFormModal({ projectId, initial, allTasks, members, onClose }: TaskFormModalProps) {
+export function TaskFormModal({
+  projectId,
+  initial,
+  allTasks,
+  members,
+  onClose,
+  onNavigate,
+}: TaskFormModalProps) {
   const { t } = useTranslation();
   const createTask = useCreateTask(projectId);
   const updateTask = useUpdateTask(projectId);
@@ -136,6 +146,9 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
       onClose={onClose}
       widthClassName="max-w-2xl"
     >
+      {initial && onNavigate && (
+        <TaskBreadcrumb task={initial} allTasks={allTasks} onNavigate={onNavigate} />
+      )}
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className="label" htmlFor="task_name">
@@ -352,6 +365,12 @@ export function TaskFormModal({ projectId, initial, allTasks, members, onClose }
           </button>
         </div>
       </form>
+
+      {initial && (
+        <div className="mt-5 border-t border-jira-borderSoft pt-4">
+          <CommentThread taskId={initial.id} members={members} />
+        </div>
+      )}
     </Modal>
   );
 }

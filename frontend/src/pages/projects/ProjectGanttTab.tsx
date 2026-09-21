@@ -41,6 +41,7 @@ export function ProjectGanttTab() {
           allTasks={data.tasks}
           members={(members ?? []).map((m) => m.user)}
           onClose={() => setEditingTaskId(null)}
+          onNavigate={setEditingTaskId}
         />
       )}
     </div>

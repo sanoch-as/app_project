@@ -17,7 +17,8 @@ Per `prompt-claude-code-plataforma-pm.md` section 4.2. Nothing below is implemen
 - **v1 stand-in**: `worklogs` (section 5) has no `status`/`billable`/`approved_by` columns — every logged hour counts immediately toward AC (see ADR-005 in DECISIONS.md). Extending `worklogs` with those columns is the natural migration path when E is built.
 
 ## H. Collaboration
-- Comments and @mentions on tasks/projects.
+- @mentions on task comments (plain comments themselves shipped — see ADR-031).
+- Comments on projects (only task-level comments shipped — see ADR-031).
 - In-app notifications.
 - Chat.
 

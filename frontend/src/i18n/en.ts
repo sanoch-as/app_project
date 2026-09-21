@@ -244,6 +244,10 @@ export const en = {
       lagDays: "Lag (days)",
       adding: "Adding…",
     },
+    breadcrumb: {
+      ancestors: "Task ancestors",
+      subtasks: "Subtasks",
+    },
   },
   kanban: {
     loadingTasks: "Loading tasks…",
@@ -343,6 +347,14 @@ export const en = {
     noHoursYet: "No hours logged yet.",
     you: "You",
     user: "User",
+  },
+  comments: {
+    title: "Comments ({{count}})",
+    noneYet: "No comments yet.",
+    placeholder: "Add a comment…",
+    add: "Comment",
+    deleteComment: "Delete comment",
+    confirmDelete: "Delete this comment?",
   },
   members: {
     title: "Project members",

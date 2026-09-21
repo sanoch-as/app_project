@@ -40,6 +40,7 @@ export function ProjectKanbanTab() {
           allTasks={data.tasks}
           members={memberUsers}
           onClose={() => setEditingTaskId(null)}
+          onNavigate={setEditingTaskId}
         />
       )}
     </div>
