@@ -82,6 +82,9 @@ Per `prompt-claude-code-plataforma-pm.md` section 4.2. Nothing below is implemen
 - **Tenant isolation is application-level** (a FastAPI dependency), not Postgres Row-Level Security. See ADR-007 for the reasoning and the suggested v2 hardening.
 - **Login rate limiting is per-account** (`users.failed_login_attempts`/`locked_until`), not per-IP. See ADR-004.
 
+## Known v1 deployment gaps
+- **No CI check that `backend/uv.lock` is in sync with `pyproject.toml`** (ADR-040): a dependency added to `pyproject.toml`/`requirements.txt` without also running `uv lock` installs fine locally (`pip install -r requirements.txt`) and passes the full test suite, but is silently absent from the production build Vercel actually deploys (which resolves from `uv.lock`) — this took the entire backend down in production once already. Add a `uv lock --check` step to `.github/workflows/ci.yml` so a stale lock file fails CI instead of only surfacing as a runtime `ModuleNotFoundError` after a deploy.
+
 ## Frontend (Phase 7) — known limits and deferred items
 - **Token storage is `localStorage`** (via a Zustand `persist` store — see ADR-018), not httpOnly cookies. Standard XSS-exposure trade-off for an MVP with no third-party scripts. A production hardening pass should move to httpOnly cookies + CSRF tokens, which requires backend changes (new cookie-issuing auth endpoints) out of scope for a frontend-only phase.
 - **Gantt drag-and-drop sends a calendar-day duration, not a working-day one** (see ADR-021): dragging a bar across a weekend/holiday can persist an `end_date` slightly later than the visually dragged span, because `frappe-gantt`'s drag callback has no awareness of the project's working calendar. The Gantt refetches server truth immediately after, so the display self-corrects; a future improvement could mirror the backend's `working_calendar.py` logic in the frontend (or expose a lightweight "preview end date" endpoint) to make the drag itself calendar-aware.

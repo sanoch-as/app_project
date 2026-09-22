@@ -1,5 +1,9 @@
-# Generated from pyproject.toml — used by Vercel to build the Python runtime.
-# Keep in sync with [tool.poetry.dependencies] in pyproject.toml.
+# NOT what Vercel installs from — Vercel's Python build reads backend/uv.lock
+# (via pyproject.toml's [project.dependencies]). This file is kept only as a
+# plain-pip fallback for environments without `uv`; a dependency added here
+# without also running `uv lock` will work locally and on CI but silently be
+# ABSENT in production (ModuleNotFoundError at cold start) — see ADR-040 in
+# docs/DECISIONS.md. Keep in sync with [project.dependencies] in pyproject.toml.
 # Versions pinned to what was verified locally (Python 3.14) — see ADR-009 in docs/DECISIONS.md.
 fastapi==0.141.1
 uvicorn[standard]==0.53.0
