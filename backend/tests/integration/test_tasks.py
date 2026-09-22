@@ -538,3 +538,72 @@ async def test_absurd_duration_days_is_rejected(client: AsyncClient):
         headers=auth_header(admin_token),
     )
     assert response.status_code == 422
+
+
+async def test_on_timeline_defaults_false_and_round_trips_via_patch(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+    task = await _create_task(client, admin_token, project["id"])
+    assert task["on_timeline"] is False
+
+    turned_on = await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"on_timeline": True},
+        headers=auth_header(admin_token),
+    )
+    assert turned_on.status_code == 200
+    assert turned_on.json()["on_timeline"] is True
+
+    # A `False` value must still persist — task_repository.update only skips
+    # `None` fields, so this exercises that `False is not None`.
+    turned_off = await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"on_timeline": False},
+        headers=auth_header(admin_token),
+    )
+    assert turned_off.status_code == 200
+    assert turned_off.json()["on_timeline"] is False
+
+
+async def test_update_on_timeline_does_not_trigger_schedule_recalculation(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+    task = await _create_task(client, admin_token, project["id"], duration_days=5)
+    schedule_fields = (
+        "start_date",
+        "end_date",
+        "early_start",
+        "early_finish",
+        "total_float",
+        "is_critical",
+    )
+    before = {field: task[field] for field in schedule_fields}
+
+    response = await client.patch(
+        f"/api/v1/tasks/{task['id']}",
+        json={"on_timeline": True},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200
+    after = response.json()
+    assert {field: after[field] for field in schedule_fields} == before
+
+
+async def test_on_timeline_can_be_set_on_parent_task_with_children(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project = await _create_project(client, admin_token)
+    parent = await _create_task(client, admin_token, project["id"], name="Parent")
+    await _create_task(
+        client, admin_token, project["id"], name="Child", parent_task_id=parent["id"]
+    )
+
+    response = await client.patch(
+        f"/api/v1/tasks/{parent['id']}",
+        json={"on_timeline": True},
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200
+    assert response.json()["on_timeline"] is True

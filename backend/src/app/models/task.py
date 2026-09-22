@@ -62,6 +62,12 @@ class Task(UUIDPKMixin, TimestampMixin, Base):
     is_milestone: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="false", nullable=False
     )
+    # Manually curated: does this task show as a bar on the Resumen tab's
+    # Roadmap widget (an "Add to Timeline" analog, ADR-041)? Independent of
+    # WBS depth/rollup — a task with children can still be flagged.
+    on_timeline: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
 
     estimated_hours: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
     budgeted_cost: Mapped[float] = mapped_column(

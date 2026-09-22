@@ -53,6 +53,7 @@ class TaskUpdate(BaseModel):
     is_milestone: bool | None = None
     estimated_hours: float | None = Field(default=None, ge=0, le=1_000_000)
     budgeted_cost: float | None = Field(default=None, ge=0, le=1_000_000_000)
+    on_timeline: bool | None = None
     assignees: list[TaskAssigneeInput] | None = Field(default=None, max_length=100)
 
 
@@ -74,6 +75,7 @@ class TaskRead(BaseModel):
     is_milestone: bool
     estimated_hours: float | None
     budgeted_cost: float
+    on_timeline: bool
     early_start: date | None
     early_finish: date | None
     late_start: date | None

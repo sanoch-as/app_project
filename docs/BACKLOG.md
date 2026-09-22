@@ -76,14 +76,16 @@ Per `prompt-claude-code-plataforma-pm.md` section 4.2. Nothing below is implemen
 - **The wrapper's own `status`/`priority` are static placeholders** (`not_started`/`medium`) — unlike its rolled-up dates/cost/%, these two fields aren't derived from anything and are reset to those same defaults on every resync if a user manually changes them via the UI, the same "the import defines this field" semantics every other Jira-imported task already has.
 - **Deleting the whole project is the only way to remove the summary root** (and everything it wraps) — `task_service.delete_task` rejects deleting it directly (`409`) since its subtree cascades on delete (ADR-030). There's no "unwrap"/"detach children" alternative; if the user wants to keep the imported tasks but drop the wrapper, they'd have to manually drag every phase out from under it first (each drag is a normal, unguarded `move_task` call).
 
+## Known v1 modeling limits — Roadmap timeline widget (ADR-041)
+- **Milestone label collisions**: two milestones close together in time on the same phase row use a simple two-row vertical stagger, not true collision-avoidance layout — dense clusters (several milestones within days of each other) can still overlap visually. Each label carries a native `title` tooltip with the full name+date as a fallback.
+- **The task picker's tree has no collapse or search** — it always renders every task fully expanded. Fine for typical WBS sizes; a project with a very large/deep tree (e.g. a big Jira import) would benefit from the same collapse/search affordances `TaskTreeTable.tsx` already has for the main Tasks tab tree.
+- **No indeterminate/cascading checkbox state**: checking a task in the picker doesn't auto-check or auto-uncheck its children — each task's `on_timeline` flag is independent, matching MS Project's own per-task "Add to Timeline" behavior.
+
 ## Known v1 scaling limits (not full features, but documented constraints)
 - **`refresh_tokens` cleanup**: expired/revoked rows are filtered out at query time (`expires_at`/`revoked`), never purged. Fine at MVP scale; add a periodic cleanup (e.g. an extra daily Vercel Cron endpoint) if the table grows large.
 - **`POST /progress/recalculate-all` scaling**: processes every `active` project in one request, one query per project (no N+1). If the number of active projects grows large enough to risk exceeding the Vercel plan's `maxDuration` (10s on Hobby), this endpoint should be paginated across multiple cron-triggered invocations, or the project should move to a Vercel plan with a higher `maxDuration`. See ADR-003.
 - **Tenant isolation is application-level** (a FastAPI dependency), not Postgres Row-Level Security. See ADR-007 for the reasoning and the suggested v2 hardening.
 - **Login rate limiting is per-account** (`users.failed_login_attempts`/`locked_until`), not per-IP. See ADR-004.
-
-## Known v1 deployment gaps
-- **No CI check that `backend/uv.lock` is in sync with `pyproject.toml`** (ADR-040): a dependency added to `pyproject.toml`/`requirements.txt` without also running `uv lock` installs fine locally (`pip install -r requirements.txt`) and passes the full test suite, but is silently absent from the production build Vercel actually deploys (which resolves from `uv.lock`) — this took the entire backend down in production once already. Add a `uv lock --check` step to `.github/workflows/ci.yml` so a stale lock file fails CI instead of only surfacing as a runtime `ModuleNotFoundError` after a deploy.
 
 ## Frontend (Phase 7) — known limits and deferred items
 - **Token storage is `localStorage`** (via a Zustand `persist` store — see ADR-018), not httpOnly cookies. Standard XSS-exposure trade-off for an MVP with no third-party scripts. A production hardening pass should move to httpOnly cookies + CSRF tokens, which requires backend changes (new cookie-issuing auth endpoints) out of scope for a frontend-only phase.

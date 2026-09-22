@@ -200,6 +200,7 @@ export interface TaskRead {
   is_milestone: boolean;
   estimated_hours: number | null;
   budgeted_cost: number;
+  on_timeline: boolean;
   early_start: string | null;
   early_finish: string | null;
   late_start: string | null;
@@ -237,6 +238,7 @@ export interface TaskUpdate {
   is_milestone?: boolean | null;
   estimated_hours?: number | null;
   budgeted_cost?: number | null;
+  on_timeline?: boolean | null;
   assignees?: TaskAssigneeInput[] | null;
 }
 

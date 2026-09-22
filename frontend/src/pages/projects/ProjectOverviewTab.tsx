@@ -14,6 +14,7 @@ import { SCurveChart } from "@/components/scurve/SCurveChart";
 import { OverdueTasksList } from "@/components/dashboard/OverdueTasksList";
 import { UpcomingMilestonesList } from "@/components/dashboard/UpcomingMilestonesList";
 import { DonutChart } from "@/components/reports/DonutChart";
+import { ProjectRoadmap } from "@/pages/projects/ProjectRoadmap";
 import { chartColors } from "@/styles/chartColors";
 import type { TaskPriority, TaskStatus } from "@/types/api";
 
@@ -103,6 +104,8 @@ export function ProjectOverviewTab() {
             : t("projects.overview.recalculateNow")}
         </Button>
       </div>
+
+      {gantt && <ProjectRoadmap project={project} tasks={gantt.tasks} />}
 
       {loading && <LoadingSpinner />}
       <ErrorMessage error={progressError ?? dashboardError} />
