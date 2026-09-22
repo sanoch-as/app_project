@@ -3,14 +3,21 @@ callers (endpoints/reports.py) load the data and hand it to these."""
 
 import csv
 import io
+import uuid
+import xml.sax.saxutils
 from datetime import date
 
+from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.page import PageMargins
 from reportlab.lib import colors
-from reportlab.lib.pagesizes import letter
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import inch
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
+from app.core.enums import DateFormat, Language, TaskPriority, TaskStatus
 from app.models.project import Project
 from app.models.task import Task
 from app.repositories.worklog_repository import WorklogExportRow
@@ -140,3 +147,284 @@ def _styled_table(data: list[list[str]]) -> Table:
         )
     )
     return table
+
+
+# ---------------------------------------------------------------------------
+# Styled task-list export (Tasks tab "Descargar" button) — Excel and PDF,
+# matching the Tasks tab's own tree view: same row order (WBS hierarchy,
+# numerically sorted, not the raw string sort docs/BACKLOG.md notes as a
+# known limitation elsewhere), same indentation, same status/priority badge
+# colors (mirrors frontend/src/components/common/Badge.tsx + tailwind
+# config's `jira` palette, kept in sync by hand — the two apps don't share a
+# module). Built to be handed straight to a client: title, generation date,
+# frozen header, no gridlines, landscape/fit-to-width page setup.
+# ---------------------------------------------------------------------------
+
+_TASK_EXPORT_HEADERS: dict[str, list[str]] = {
+    "es": ["Clave", "Nombre", "Estado", "Prioridad", "Inicio", "Fin", "% Hecho"],
+    "en": ["Key", "Name", "Status", "Priority", "Start", "End", "% Done"],
+}
+
+_STATUS_LABELS: dict[str, dict[TaskStatus, str]] = {
+    "es": {
+        TaskStatus.NOT_STARTED: "Sin iniciar",
+        TaskStatus.IN_PROGRESS: "En curso",
+        TaskStatus.BLOCKED: "Bloqueada",
+        TaskStatus.COMPLETED: "Completada",
+    },
+    "en": {
+        TaskStatus.NOT_STARTED: "Not started",
+        TaskStatus.IN_PROGRESS: "In progress",
+        TaskStatus.BLOCKED: "Blocked",
+        TaskStatus.COMPLETED: "Completed",
+    },
+}
+
+_PRIORITY_LABELS: dict[str, dict[TaskPriority, str]] = {
+    "es": {
+        TaskPriority.LOW: "Baja",
+        TaskPriority.MEDIUM: "Media",
+        TaskPriority.HIGH: "Alta",
+        TaskPriority.CRITICAL: "Crítica",
+    },
+    "en": {
+        TaskPriority.LOW: "Low",
+        TaskPriority.MEDIUM: "Medium",
+        TaskPriority.HIGH: "High",
+        TaskPriority.CRITICAL: "Critical",
+    },
+}
+
+# (background, text) hex pairs, no "#" — matches Badge.tsx's tone classes.
+_STATUS_COLORS: dict[TaskStatus, tuple[str, str]] = {
+    TaskStatus.NOT_STARTED: ("F1F2F4", "44546F"),  # gray
+    TaskStatus.IN_PROGRESS: ("E9F2FF", "0C66E4"),  # blue
+    TaskStatus.BLOCKED: ("FEF2F2", "E2483D"),  # red
+    TaskStatus.COMPLETED: ("DCFFF1", "216E4E"),  # green
+}
+_PRIORITY_COLORS: dict[TaskPriority, tuple[str, str]] = {
+    TaskPriority.LOW: ("F1F2F4", "44546F"),  # gray
+    TaskPriority.MEDIUM: ("E9F2FF", "0C66E4"),  # blue
+    TaskPriority.HIGH: ("FFF7ED", "E56910"),  # orange
+    TaskPriority.CRITICAL: ("FEF2F2", "E2483D"),  # red
+}
+
+_HEADER_BG = "FAFBFC"  # jira.panel
+_TEXT = "172B4D"  # jira.text
+_TEXT_SUB = "626F86"  # jira.textSub
+_BORDER = "DCDFE4"  # jira.border
+_STRIPE_BG = "FAFBFC"  # jira.panel, used as an alternating-row tint
+
+
+def _export_language(language: Language) -> str:
+    return language.value if language in (Language.ES, Language.EN) else "es"
+
+
+def _format_export_date(value: date, date_format: DateFormat) -> str:
+    return value.strftime("%d/%m/%Y") if date_format == DateFormat.DMY else value.isoformat()
+
+
+def _wbs_sort_key(wbs_code: str) -> tuple[int, ...]:
+    """Numeric, not lexicographic — "10" must sort after "2", not before it
+    (docs/BACKLOG.md's known WBS-ordering limitation elsewhere in the app)."""
+    parts: list[int] = []
+    for segment in wbs_code.split("."):
+        try:
+            parts.append(int(segment))
+        except ValueError:
+            parts.append(0)
+    return tuple(parts)
+
+
+def _build_hierarchical_rows(tasks: list[Task]) -> list[tuple[Task, int]]:
+    """Depth-first WBS order (a parent immediately followed by its own
+    subtree, siblings numerically sorted) — the same shape as the Tasks
+    tab's own tree view, so the exported row order matches what's on
+    screen."""
+    children_by_parent: dict[uuid.UUID | None, list[Task]] = {}
+    for task in tasks:
+        children_by_parent.setdefault(task.parent_task_id, []).append(task)
+    for siblings in children_by_parent.values():
+        siblings.sort(key=lambda t: _wbs_sort_key(t.wbs_code))
+
+    rows: list[tuple[Task, int]] = []
+
+    def visit(parent_id: uuid.UUID | None, depth: int) -> None:
+        for task in children_by_parent.get(parent_id, []):
+            rows.append((task, depth))
+            visit(task.id, depth + 1)
+
+    visit(None, 0)
+    return rows
+
+
+def tasks_to_styled_xlsx(
+    project: Project, tasks: list[Task], language: Language, date_format: DateFormat
+) -> bytes:
+    lang = _export_language(language)
+    headers = _TASK_EXPORT_HEADERS[lang]
+    status_labels = _STATUS_LABELS[lang]
+    priority_labels = _PRIORITY_LABELS[lang]
+    rows = _build_hierarchical_rows(tasks)
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = (project.name or "Tareas")[:31] or "Tareas"
+
+    thin_border = Border(*([Side(style="thin", color=_BORDER)] * 4))
+
+    title_text = f"{project.name} — {'Listado de tareas' if lang == 'es' else 'Task list'}"
+    sheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=len(headers))
+    title_cell = sheet.cell(row=1, column=1, value=title_text)
+    title_cell.font = Font(bold=True, size=14, color=_TEXT)
+    sheet.row_dimensions[1].height = 26
+
+    generated_prefix = "Generado el " if lang == "es" else "Generated on "
+    subtitle_text = generated_prefix + _format_export_date(date.today(), date_format)
+    sheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=len(headers))
+    subtitle_cell = sheet.cell(row=2, column=1, value=subtitle_text)
+    subtitle_cell.font = Font(size=9, italic=True, color=_TEXT_SUB)
+
+    header_row = 4
+    for col, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=header_row, column=col, value=header)
+        cell.font = Font(bold=True, size=10, color=_TEXT)
+        cell.fill = PatternFill("solid", fgColor=_HEADER_BG)
+        cell.border = thin_border
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+
+    for offset, (task, depth) in enumerate(rows):
+        row_idx = header_row + 1 + offset
+        striped = offset % 2 == 1
+        values = [
+            task.wbs_code,
+            task.name,
+            status_labels.get(task.status, task.status.value),
+            priority_labels.get(task.priority, task.priority.value),
+            _format_export_date(task.start_date, date_format),
+            _format_export_date(task.end_date, date_format),
+            f"{float(task.percent_complete):.1f}%",
+        ]
+        for col, value in enumerate(values, start=1):
+            cell = sheet.cell(row=row_idx, column=col, value=value)
+            cell.border = thin_border
+            cell.font = Font(size=10, color=_TEXT)
+            if striped:
+                cell.fill = PatternFill("solid", fgColor=_STRIPE_BG)
+            cell.alignment = (
+                Alignment(indent=depth * 2, vertical="center")
+                if col == 2
+                else Alignment(vertical="center")
+            )
+
+        status_bg, status_fg = _STATUS_COLORS.get(task.status, ("FFFFFF", _TEXT))
+        status_cell = sheet.cell(row=row_idx, column=3)
+        status_cell.fill = PatternFill("solid", fgColor=status_bg)
+        status_cell.font = Font(size=10, bold=True, color=status_fg)
+
+        priority_bg, priority_fg = _PRIORITY_COLORS.get(task.priority, ("FFFFFF", _TEXT))
+        priority_cell = sheet.cell(row=row_idx, column=4)
+        priority_cell.fill = PatternFill("solid", fgColor=priority_bg)
+        priority_cell.font = Font(size=10, bold=True, color=priority_fg)
+
+    for col, width in enumerate([12, 42, 16, 14, 13, 13, 11], start=1):
+        sheet.column_dimensions[get_column_letter(col)].width = width
+
+    sheet.freeze_panes = f"A{header_row + 1}"
+    sheet.sheet_view.showGridLines = False
+    sheet.page_setup.orientation = "landscape"
+    sheet.page_setup.fitToWidth = 1
+    sheet.page_setup.fitToHeight = 0
+    sheet.sheet_properties.pageSetUpPr.fitToPage = True
+    sheet.page_margins = PageMargins(left=0.4, right=0.4, top=0.5, bottom=0.5)
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def tasks_to_styled_pdf(
+    project: Project, tasks: list[Task], language: Language, date_format: DateFormat
+) -> bytes:
+    lang = _export_language(language)
+    headers = _TASK_EXPORT_HEADERS[lang]
+    status_labels = _STATUS_LABELS[lang]
+    priority_labels = _PRIORITY_LABELS[lang]
+    rows = _build_hierarchical_rows(tasks)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(letter),
+        leftMargin=0.4 * inch,
+        rightMargin=0.4 * inch,
+        topMargin=0.5 * inch,
+        bottomMargin=0.4 * inch,
+    )
+    styles = getSampleStyleSheet()
+    cell_style = ParagraphStyle("TaskExportCell", parent=styles["Normal"], fontSize=8, leading=10)
+
+    title = "Listado de tareas" if lang == "es" else "Task list"
+    generated_prefix = "Generado el " if lang == "es" else "Generated on "
+    generated_text = generated_prefix + _format_export_date(date.today(), date_format)
+    story = [
+        Paragraph(f"{xml.sax.saxutils.escape(project.name)} — {title}", styles["Title"]),
+        Paragraph(generated_text, styles["Normal"]),
+        Spacer(1, 0.2 * inch),
+    ]
+
+    data: list[list[object]] = [list(headers)]
+    for task, depth in rows:
+        indent = "&nbsp;" * (depth * 4)
+        name_cell = Paragraph(f"{indent}{xml.sax.saxutils.escape(task.name)}", cell_style)
+        data.append(
+            [
+                task.wbs_code,
+                name_cell,
+                status_labels.get(task.status, task.status.value),
+                priority_labels.get(task.priority, task.priority.value),
+                _format_export_date(task.start_date, date_format),
+                _format_export_date(task.end_date, date_format),
+                f"{float(task.percent_complete):.1f}%",
+            ]
+        )
+
+    col_widths = [
+        0.7 * inch,
+        3.6 * inch,
+        1.1 * inch,
+        0.9 * inch,
+        0.9 * inch,
+        0.9 * inch,
+        0.8 * inch,
+    ]
+    table = Table(data, colWidths=col_widths, repeatRows=1)
+    style_commands: list[tuple[object, ...]] = [
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor(f"#{_HEADER_BG}")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.HexColor(f"#{_TEXT}")),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.HexColor(f"#{_BORDER}")),
+        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor(f"#{_STRIPE_BG}")]),
+    ]
+    for row_idx, (task, _depth) in enumerate(rows, start=1):
+        status_bg, status_fg = _STATUS_COLORS.get(task.status, ("FFFFFF", _TEXT))
+        style_commands.append(
+            ("BACKGROUND", (2, row_idx), (2, row_idx), colors.HexColor(f"#{status_bg}"))
+        )
+        style_commands.append(
+            ("TEXTCOLOR", (2, row_idx), (2, row_idx), colors.HexColor(f"#{status_fg}"))
+        )
+        priority_bg, priority_fg = _PRIORITY_COLORS.get(task.priority, ("FFFFFF", _TEXT))
+        style_commands.append(
+            ("BACKGROUND", (3, row_idx), (3, row_idx), colors.HexColor(f"#{priority_bg}"))
+        )
+        style_commands.append(
+            ("TEXTCOLOR", (3, row_idx), (3, row_idx), colors.HexColor(f"#{priority_fg}"))
+        )
+    table.setStyle(TableStyle(style_commands))
+    story.append(table)
+
+    doc.build(story)
+    return buffer.getvalue()

@@ -230,6 +230,9 @@ export const en = {
       expand: "Expand subtasks",
       collapse: "Collapse subtasks",
       resetColumns: "Reset columns",
+      download: "Download",
+      downloadExcel: "Download as Excel",
+      downloadPdf: "Download as PDF",
     },
     form: {
       editTitle: "Edit task — {{wbs}}",

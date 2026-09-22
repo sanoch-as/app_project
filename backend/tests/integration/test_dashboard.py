@@ -164,6 +164,69 @@ async def test_export_tasks_csv(client: AsyncClient):
     assert "wbs_code" in response.text.splitlines()[0]
 
 
+async def test_export_tasks_xlsx_is_styled_and_hierarchical(client: AsyncClient):
+    import io
+
+    from openpyxl import load_workbook
+
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+
+    parent = await _create_task(client, admin_token, project_id, name="Fase 1")
+    await _create_task(
+        client,
+        admin_token,
+        project_id,
+        name="Subtarea 1.1",
+        parent_task_id=parent["id"],
+        priority="critical",
+    )
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/reports/export?type=tasks_xlsx",
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert response.headers["content-disposition"].endswith('.xlsx"')
+
+    workbook = load_workbook(io.BytesIO(response.content))
+    sheet = workbook.active
+    values = [[cell.value for cell in row] for row in sheet.iter_rows()]
+    flattened = [v for row in values for v in row if isinstance(v, str)]
+    assert "Fase 1" in flattened
+    assert "Subtarea 1.1" in flattened
+    assert "Clave" in values[3]  # header row (row 4: title, subtitle, blank, header)
+
+    # The child's own row has its priority cell ("Crítica") filled with the
+    # same red used for the "critical" badge in the web app.
+    header_row_idx = next(i for i, row in enumerate(values, start=1) if "Clave" in row)
+    child_row_idx = next(i for i, row in enumerate(values, start=1) if "Subtarea 1.1" in row)
+    priority_col = values[header_row_idx - 1].index("Prioridad") + 1
+    priority_cell = sheet.cell(row=child_row_idx, column=priority_col)
+    assert priority_cell.value == "Crítica"
+    assert priority_cell.fill.fgColor.rgb == "00FEF2F2"
+
+
+async def test_export_tasks_pdf_is_a_real_pdf(client: AsyncClient):
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+    project_id = await _create_project(client, admin_token)
+    await _create_task(client, admin_token, project_id, name="Exportable Task")
+
+    response = await client.get(
+        f"/api/v1/projects/{project_id}/reports/export?type=tasks_pdf",
+        headers=auth_header(admin_token),
+    )
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "application/pdf"
+    assert response.headers["content-disposition"].endswith('.pdf"')
+    assert response.content.startswith(b"%PDF")
+
+
 async def test_export_worklogs_csv(client: AsyncClient):
     admin = await register_admin(client)
     admin_token = admin["tokens"]["access_token"]

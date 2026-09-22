@@ -233,6 +233,9 @@ export const es: typeof en = {
       expand: "Expandir subtareas",
       collapse: "Contraer subtareas",
       resetColumns: "Restablecer columnas",
+      download: "Descargar",
+      downloadExcel: "Descargar como Excel",
+      downloadPdf: "Descargar como PDF",
     },
     form: {
       editTitle: "Editar tarea — {{wbs}}",

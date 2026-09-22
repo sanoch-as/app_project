@@ -450,7 +450,7 @@ export interface ProjectDashboard {
 // Reports export
 // ---------------------------------------------------------------------------
 
-export type ExportType = "tasks" | "worklogs" | "summary";
+export type ExportType = "tasks" | "tasks_xlsx" | "tasks_pdf" | "worklogs" | "summary";
 
 // ---------------------------------------------------------------------------
 // Jira CSV import

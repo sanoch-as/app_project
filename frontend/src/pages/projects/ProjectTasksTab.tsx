@@ -7,13 +7,27 @@ import {
   type ColumnDef,
   type SortingState,
 } from "@tanstack/react-table";
-import { Diamond, Filter, Link2, Pencil, Plus, RotateCcw, Trash2, Upload, Clock as ClockIcon } from "lucide-react";
+import {
+  Diamond,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  Link2,
+  Pencil,
+  Plus,
+  RotateCcw,
+  Trash2,
+  Upload,
+  Clock as ClockIcon,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useProjectDetailContext } from "@/pages/projects/ProjectDetailContext";
 import { useDeleteTask, useGantt, useProjectTasks, useUpdateTask } from "@/hooks/useTasks";
 import { useProjectMembers } from "@/hooks/useProjects";
 import { useCreateWorklog } from "@/hooks/useWorklogs";
 import { useColumnLayout } from "@/hooks/useColumnLayout";
+import { downloadProjectExport } from "@/api/reportsExport";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
@@ -34,7 +48,7 @@ import { TaskFormModal } from "@/pages/tasks/TaskFormModal";
 import { ImportFromJiraModal } from "@/pages/projects/ImportFromJiraModal";
 import { TaskTreeTable } from "@/pages/projects/TaskTreeTable";
 import { DependencyManager } from "@/pages/tasks/DependencyManager";
-import type { TaskRead, TaskStatus } from "@/types/api";
+import type { ExportType, TaskRead, TaskStatus } from "@/types/api";
 
 const STATUS_OPTIONS: (TaskStatus | "")[] = ["", "not_started", "in_progress", "blocked", "completed"];
 
@@ -87,6 +101,8 @@ export function ProjectTasksTab() {
   const [managingDeps, setManagingDeps] = useState<TaskRead | null>(null);
   const [loggingHours, setLoggingHours] = useState<TaskRead | null>(null);
   const [deleting, setDeleting] = useState<TaskRead | null>(null);
+  const [exporting, setExporting] = useState<ExportType | null>(null);
+  const [exportError, setExportError] = useState<unknown>(null);
 
   const memberUsers = useMemo(() => (members ?? []).map((m) => m.user), [members]);
   const allTasks = gantt?.tasks ?? data?.items ?? [];
@@ -314,6 +330,19 @@ export function ProjectTasksTab() {
   const statusFilterLabel =
     statusFilter === "" ? t("tasks.table.allStatuses") : t(`enums.taskStatus.${statusFilter}`);
 
+  async function handleDownload(type: ExportType, extension: string) {
+    setExporting(type);
+    setExportError(null);
+    try {
+      const safeName = project.name.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+      await downloadProjectExport(project.id, type, `${safeName}-tareas.${extension}`);
+    } catch (err) {
+      setExportError(err);
+    } finally {
+      setExporting(null);
+    }
+  }
+
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -357,6 +386,44 @@ export function ProjectTasksTab() {
               onClick={columnLayout.reset}
             />
           )}
+          <Dropdown
+            trigger={({ toggle }) => (
+              <Button
+                variant="secondary"
+                iconLeft={Download}
+                onClick={toggle}
+                loading={exporting !== null}
+              >
+                {exporting !== null ? t("reports.downloading") : t("tasks.table.download")}
+              </Button>
+            )}
+          >
+            {({ close }) => (
+              <>
+                <DropdownItem
+                  onClick={() => {
+                    close();
+                    void handleDownload("tasks_xlsx", "xlsx");
+                  }}
+                >
+                  <FileSpreadsheet
+                    className="mr-2 inline h-4 w-4 text-jira-greenBadgeText"
+                    aria-hidden="true"
+                  />
+                  {t("tasks.table.downloadExcel")}
+                </DropdownItem>
+                <DropdownItem
+                  onClick={() => {
+                    close();
+                    void handleDownload("tasks_pdf", "pdf");
+                  }}
+                >
+                  <FileText className="mr-2 inline h-4 w-4 text-jira-red" aria-hidden="true" />
+                  {t("tasks.table.downloadPdf")}
+                </DropdownItem>
+              </>
+            )}
+          </Dropdown>
           <Button variant="secondary" iconLeft={Upload} onClick={() => setShowImport(true)}>
             {t("jiraImport.trigger")}
           </Button>
@@ -368,6 +435,7 @@ export function ProjectTasksTab() {
 
       {isLoading && <LoadingSpinner />}
       <ErrorMessage error={error} />
+      <ErrorMessage error={exportError} />
 
       {showTree ? (
         gantt ? (

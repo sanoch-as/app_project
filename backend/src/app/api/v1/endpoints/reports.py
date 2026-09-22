@@ -7,9 +7,9 @@ from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.enums import UserRole
+from app.core.enums import DateFormat, Language, UserRole
 from app.core.security import CurrentUser, get_current_user
-from app.repositories import task_repository, worklog_repository
+from app.repositories import task_repository, user_repository, worklog_repository
 from app.schemas.common import Page
 from app.schemas.worklog import WorklogRead
 from app.services import progress_service, project_service, report_export_service
@@ -53,7 +53,9 @@ async def worklogs_report(
 @router.get("/projects/{project_id}/reports/export")
 async def export_project_report(
     project_id: uuid.UUID,
-    export_type: Literal["tasks", "worklogs", "summary"] = Query(alias="type"),
+    export_type: Literal["tasks", "tasks_xlsx", "tasks_pdf", "worklogs", "summary"] = Query(
+        alias="type"
+    ),
     current_user: CurrentUser = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ) -> Response:
@@ -66,6 +68,31 @@ async def export_project_report(
             content=csv_body,
             media_type="text/csv",
             headers={"Content-Disposition": f'attachment; filename="{project.name}-tasks.csv"'},
+        )
+
+    if export_type in ("tasks_xlsx", "tasks_pdf"):
+        tasks = await task_repository.list_all_by_project(db, project_id)
+        user = await user_repository.get_by_id(db, current_user.organization_id, current_user.id)
+        language = user.language if user is not None else Language.ES
+        date_format = user.date_format if user is not None else DateFormat.DMY
+
+        if export_type == "tasks_xlsx":
+            xlsx_body = report_export_service.tasks_to_styled_xlsx(
+                project, tasks, language, date_format
+            )
+            return Response(
+                content=xlsx_body,
+                media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{project.name}-tareas.xlsx"'
+                },
+            )
+
+        pdf_body = report_export_service.tasks_to_styled_pdf(project, tasks, language, date_format)
+        return Response(
+            content=pdf_body,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{project.name}-tareas.pdf"'},
         )
 
     if export_type == "worklogs":
