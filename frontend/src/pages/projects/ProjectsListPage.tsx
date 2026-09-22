@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Plus } from "lucide-react";
+import { Plus, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useAuthStore } from "@/store/authStore";
 import { useDeleteProject, useProjects } from "@/hooks/useProjects";
@@ -11,6 +11,7 @@ import { ProjectStatusBadge } from "@/components/common/Badge";
 import { Button } from "@/components/common/Button";
 import { useDateFormat } from "@/hooks/useDateFormat";
 import { ProjectFormModal } from "@/pages/projects/ProjectFormModal";
+import { ImportFromJiraModal } from "@/pages/projects/ImportFromJiraModal";
 import type { ProjectRead } from "@/types/api";
 
 export function ProjectsListPage() {
@@ -21,6 +22,7 @@ export function ProjectsListPage() {
   const deleteProject = useDeleteProject();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editing, setEditing] = useState<ProjectRead | null>(null);
   const [deleting, setDeleting] = useState<ProjectRead | null>(null);
 
@@ -32,9 +34,14 @@ export function ProjectsListPage() {
           <p className="text-sm text-jira-textSub">{t("projects.list.subtitle")}</p>
         </div>
         {role === "admin" && (
-          <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
-            {t("projects.list.newProject")}
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" iconLeft={Upload} onClick={() => setShowImport(true)}>
+              {t("jiraImport.trigger")}
+            </Button>
+            <Button variant="primary" iconLeft={Plus} onClick={() => setShowCreate(true)}>
+              {t("projects.list.newProject")}
+            </Button>
+          </div>
         )}
       </div>
 
@@ -101,6 +108,7 @@ export function ProjectsListPage() {
       )}
 
       {showCreate && <ProjectFormModal onClose={() => setShowCreate(false)} />}
+      {showImport && <ImportFromJiraModal onClose={() => setShowImport(false)} />}
       {editing && <ProjectFormModal initial={editing} onClose={() => setEditing(null)} />}
       {deleting && (
         <ConfirmDialog

@@ -20,6 +20,9 @@ if TYPE_CHECKING:
 
 class Task(UUIDPKMixin, TimestampMixin, Base):
     __tablename__ = "tasks"
+    __table_args__ = (
+        UniqueConstraint("project_id", "external_key", name="uq_tasks_project_external_key"),
+    )
 
     project_id: Mapped[uuid.UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -33,10 +36,20 @@ class Task(UUIDPKMixin, TimestampMixin, Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
     wbs_code: Mapped[str] = mapped_column(String(50), nullable=False)
+    # Jira issue key (e.g. "BH-8") for tasks created by the Jira CSV importer —
+    # None for every hand-created task. Lets a re-import find this exact row
+    # again to update it instead of creating a duplicate (see ADR-034).
+    external_key: Mapped[str | None] = mapped_column(String(64), nullable=True)
 
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    # For a leaf task, equals duration_days. For a WBS parent, the recursive
+    # sum of every leaf task's duration underneath it (NOT its own calendar
+    # span) — the weight compute_rollup uses to roll percent_complete up the
+    # tree, so a nested rollup always matches a flat leaf-duration-weighted
+    # average regardless of gaps between sibling tasks (see ADR-037).
+    leaf_duration_days: Mapped[int] = mapped_column(Integer, nullable=False)
     percent_complete: Mapped[float] = mapped_column(
         Numeric(5, 2), default=0, server_default="0", nullable=False
     )

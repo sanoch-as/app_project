@@ -146,4 +146,11 @@ DELETE /api/v1/comments/{id}
 ```
 - `user_id` is always the caller, never client-supplied — same rule as worklogs. Creating/listing requires the same project access as tasks and worklogs (admin: any project in org; member: only projects they belong to). Deleting requires being the comment's author or an admin (`403` otherwise). There is no edit endpoint — see ADR-031.
 
+**Jira CSV import**
+```
+POST /api/v1/projects/import/jira-csv                     (multipart: project_name, file — admin only)
+POST /api/v1/projects/{id}/tasks/import/jira-csv           (multipart: file — any project member)
+```
+- Both parse a Jira Cloud CSV export (`Clave de incidencia`/`Clave principal` drive the WBS hierarchy, not `Tipo de Incidencia`) and return `{project_id, created_count, updated_count, dependency_count, warnings: string[]}`. The first creates a brand-new project and imports into it (`admin`-only, mirrors `POST /projects`'s gate); the second re-syncs a CSV into an already-existing project by matching each row's issue key against `Task.external_key` — a task found this way is updated in place, one not found is created, and one that's missing from the CSV is left untouched (never deleted). Assignees are never imported (see ADR-034). The CSV carries no real dependency data, so every sibling group of leaf tasks is also auto-chained Finish-to-Start by CSV start date (`dependency_count` counts these); this chain is fully recomputed on every (re)import, but a dependency the user added by hand is never touched (see ADR-035). Every import also wraps everything under one synthetic "project summary" root task (`wbs_code "0"`, named after the project), so `created_count`/`updated_count` are always one higher than the CSV's own row count; that task can't be deleted directly (`409 jira_project_root_not_deletable`) since its subtree cascades on delete (see ADR-036). Files over 2MB or 200 rows are rejected (`422`) before any write.
+
 This section grows with each phase; see `docs/DECISIONS.md` for the reasoning behind anything that isn't a literal transcription of spec section 7.

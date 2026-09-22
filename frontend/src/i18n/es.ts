@@ -184,6 +184,23 @@ export const es: typeof en = {
       statusDone: "Hecho",
     },
   },
+  jiraImport: {
+    trigger: "Importar desde Jira",
+    title: "Importar CSV de Jira Cloud",
+    projectName: "Nombre del proyecto",
+    file: "Archivo CSV",
+    fileHint:
+      "Export CSV de un proyecto de Jira Cloud. Los asignados nunca se importan; vuelve a subir el mismo archivo más adelante para sincronizar cambios sin duplicar tareas.",
+    submit: "Importar",
+    importing: "Importando…",
+    viewProject: "Ver proyecto",
+    result: {
+      summary: "{{created}} tareas creadas, {{updated}} actualizadas.",
+      dependenciesSummary:
+        "{{count}} dependencia(s) secuencial(es) generada(s) automáticamente entre tareas hermanas (el CSV de Jira no trae dependencias reales).",
+      warningsTitle: "Avisos",
+    },
+  },
   tasks: {
     table: {
       key: "Clave",
@@ -206,11 +223,16 @@ export const es: typeof en = {
       deleteTaskTitle: "Eliminar tarea",
       deleteTaskMessage:
         '¿Eliminar "{{name}}" ({{wbs}})? Sus dependencias y horas registradas también se eliminarán.',
+      projectRootNotDeletable:
+        "Tarea generada automáticamente por la importación de Jira — no se puede eliminar directamente (eliminarla borraría todas las tareas importadas). Elimina el proyecto completo si quieres quitar este contenido.",
       logHoursTitle: "Registrar horas — {{name}}",
       milestone: "Hito",
       rollupTooltip: "Calculado automáticamente a partir de las subtareas",
       dragToReorder: "Arrastra para reordenar o mover bajo otra tarea",
       editDate: "Editar fecha",
+      expand: "Expandir subtareas",
+      collapse: "Contraer subtareas",
+      resetColumns: "Restablecer columnas",
     },
     form: {
       editTitle: "Editar tarea — {{wbs}}",
@@ -231,6 +253,10 @@ export const es: typeof en = {
       assignees: "Asignados",
       noMembersYet: "Aún no hay miembros en este proyecto — agrega algunos en la pestaña Miembros.",
       createTask: "Crear tarea",
+      importedFromJira: "Importada desde Jira",
+      projectSummaryTask: "Resumen del proyecto",
+      projectSummaryTaskHint:
+        "Tarea generada automáticamente por la importación de Jira — agrupa todas las tareas importadas para mostrar la duración y el % completado de todo el proyecto.",
     },
     dependencies: {
       title: "Dependencias — {{wbs}} {{name}}",

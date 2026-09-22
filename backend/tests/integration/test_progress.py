@@ -216,7 +216,10 @@ async def test_projected_progress_by_duration_differs_from_by_cost(client: Async
     # equal (1 each) — but their costs are wildly asymmetric (9000 vs 1000),
     # so cost-weighted and duration-weighted give clearly different answers
     # for both "planned" and "actual", proving the two sections are
-    # independent (Forecast tab "Por costo" vs "Por plazo", ADR-033).
+    # independent (Forecast tab "Por costo" vs "Por plazo", ADR-033). Both
+    # start dates are deliberately weekdays (2026-08-03 a Monday, 2026-12-01
+    # a Tuesday) — the "por plazo" planned figure now weighs by working days
+    # (ADR-038), so a weekend start would make that task's weight 0.
     admin = await register_admin(client)
     admin_token = admin["tokens"]["access_token"]
     project_id = await _create_project(client, admin_token)
@@ -226,7 +229,7 @@ async def test_projected_progress_by_duration_differs_from_by_cost(client: Async
         admin_token,
         project_id,
         name="Task A",
-        start_date="2026-08-01",
+        start_date="2026-08-03",
         duration_days=1,
         budgeted_cost=9000,
     )
@@ -368,12 +371,20 @@ async def test_progress_history_reconstructs_actual_from_snapshots(
     for snapshot_date, percent in [
         (three_weeks_ago, 0.0),
         (two_weeks_ago, 50.0),
-        (today, 100.0),
     ]:
         await task_progress_snapshot_repository.upsert_many(
             db_session, project_id, snapshot_date, [(task_uuid, percent)]
         )
     await db_session.commit()
+    # The "today" checkpoint reads the task's *live* percent_complete
+    # (ADR-038), not a snapshot — a real edit made today shouldn't have to
+    # wait for the next daily recalculation to show up. A snapshot for
+    # today is intentionally *not* written here, to prove that.
+    await client.patch(
+        f"/api/v1/tasks/{task_uuid}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
+    )
 
     response = await client.get(
         f"/api/v1/projects/{project_id}/progress/history",
@@ -397,9 +408,7 @@ async def test_progress_history_reconstructs_actual_from_snapshots(
     assert all(p["planned_percent_complete"] is None for p in body["points"])
 
 
-async def test_progress_history_by_duration_differs_from_by_cost(
-    client: AsyncClient, db_session: AsyncSession
-):
+async def test_progress_history_by_duration_differs_from_by_cost(client: AsyncClient):
     # Same asymmetric-cost, equal-duration setup as the projected-progress
     # test — proves the history endpoint's "actual" series is independently
     # duration-weighted too, not just the point-in-time /progress/projected.
@@ -427,10 +436,19 @@ async def test_progress_history_by_duration_differs_from_by_cost(
     )
 
     today = date.today()
-    await task_progress_snapshot_repository.upsert_many(
-        db_session, project_id, today, [(task_a["id"], 100.0), (task_b["id"], 0.0)]
+    # The single checkpoint requested below is "today", which reads the
+    # tasks' *live* percent_complete rather than a snapshot (ADR-038) — set
+    # it directly instead of writing a task_progress_snapshots row.
+    await client.patch(
+        f"/api/v1/tasks/{task_a['id']}",
+        json={"percent_complete": 100},
+        headers=auth_header(admin_token),
     )
-    await db_session.commit()
+    await client.patch(
+        f"/api/v1/tasks/{task_b['id']}",
+        json={"percent_complete": 0},
+        headers=auth_header(admin_token),
+    )
 
     response = await client.get(
         f"/api/v1/projects/{project_id}/progress/history",

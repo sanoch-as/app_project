@@ -80,6 +80,7 @@ class TaskRead(BaseModel):
     late_finish: date | None
     total_float: int | None
     is_critical: bool
+    external_key: str | None
     assignees: list[TaskAssigneeRead]
     created_at: datetime
     updated_at: datetime

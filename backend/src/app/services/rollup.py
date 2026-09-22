@@ -23,6 +23,7 @@ class RollupChildInput:
     duration_days: int
     budgeted_cost: float
     percent_complete: float
+    leaf_duration_days: int
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,7 @@ class RollupResult:
     duration_days: int
     budgeted_cost: float
     percent_complete: float
+    leaf_duration_days: int
 
 
 def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) -> RollupResult:
@@ -43,16 +45,34 @@ def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) 
     metric) — every task always has a duration, but `budgeted_cost` is
     frequently left at its 0 default, which would otherwise freeze the
     parent at 0% forever regardless of how far along its children actually
-    are. Falls back to a plain average when every child has zero duration
+    are.
+
+    The weight is `leaf_duration_days`, NOT `duration_days` — this is
+    deliberate and load-bearing (see ADR-037). `duration_days` is a task's
+    *calendar span* (`min(start) → max(end)`, set below), which for a parent
+    can be much larger than the actual work inside it whenever its children
+    have gaps between them (parallel tracks, slack, non-contiguous dates).
+    Using the span as the upward-propagating weight would make each level of
+    the WBS tree distort the one above it, so a project's root task could
+    read a different % complete than a flat duration-weighted average over
+    every leaf task (`duration_weighted_percent_complete`) — which is
+    supposed to be the same number, just computed a different way. Weighting
+    by `leaf_duration_days` (each child's own total leaf-task duration,
+    recursively summed — see its propagation in `propagate_rollup_to_ancestors`
+    and `jira_csv_parser.finalize`) instead makes the nested, level-by-level
+    rollup mathematically identical to that flat leaf-only average,
+    regardless of how deep the tree is or where the gaps are.
+
+    Falls back to a plain average when every child has zero leaf duration
     (an all-milestones group), where the weighted formula is undefined
     (0/0)."""
     start_date = min(c.start_date for c in children)
     end_date = max(c.end_date for c in children)
     budgeted_cost = sum(c.budgeted_cost for c in children)
-    total_duration = sum(c.duration_days for c in children)
-    if total_duration:
+    total_leaf_duration = sum(c.leaf_duration_days for c in children)
+    if total_leaf_duration:
         percent_complete = (
-            sum(c.percent_complete * c.duration_days for c in children) / total_duration
+            sum(c.percent_complete * c.leaf_duration_days for c in children) / total_leaf_duration
         )
     else:
         percent_complete = sum(c.percent_complete for c in children) / len(children)
@@ -63,6 +83,7 @@ def compute_rollup(children: list[RollupChildInput], calendar: WorkingCalendar) 
         duration_days=calendar.working_days_between(start_date, end_date),
         budgeted_cost=budgeted_cost,
         percent_complete=percent_complete,
+        leaf_duration_days=total_leaf_duration,
     )
 
 
@@ -122,6 +143,7 @@ async def propagate_rollup_to_ancestors(
                     duration_days=child.duration_days,
                     budgeted_cost=float(child.budgeted_cost),
                     percent_complete=float(child.percent_complete),
+                    leaf_duration_days=child.leaf_duration_days,
                 )
                 for child in children
             ],
@@ -132,6 +154,7 @@ async def propagate_rollup_to_ancestors(
         parent.duration_days = result.duration_days
         parent.budgeted_cost = result.budgeted_cost
         parent.percent_complete = result.percent_complete
+        parent.leaf_duration_days = result.leaf_duration_days
 
         current_id = parent.parent_task_id
 

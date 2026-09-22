@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
+import { JIRA_PROJECT_ROOT_KEY } from "@/lib/jiraImport";
 import { CommentThread } from "@/pages/tasks/CommentThread";
 import { TaskBreadcrumb } from "@/pages/tasks/TaskBreadcrumb";
 import type { TaskCreate, TaskPriority, TaskRead, TaskUpdate, UserRead } from "@/types/api";
@@ -175,6 +176,20 @@ export function TaskFormModal({
     >
       {initial && onNavigate && (
         <TaskBreadcrumb task={initial} allTasks={allTasks} onNavigate={onNavigate} />
+      )}
+      {initial?.external_key && (
+        <span
+          className="mb-3 inline-block rounded bg-jira-hover px-1.5 py-0.5 text-xs font-medium text-jira-textSub"
+          title={
+            initial.external_key === JIRA_PROJECT_ROOT_KEY
+              ? t("tasks.form.projectSummaryTaskHint")
+              : t("tasks.form.importedFromJira")
+          }
+        >
+          {initial.external_key === JIRA_PROJECT_ROOT_KEY
+            ? t("tasks.form.projectSummaryTask")
+            : initial.external_key}
+        </span>
       )}
       <form onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_296px]">

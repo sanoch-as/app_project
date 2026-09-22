@@ -1,5 +1,6 @@
 import {
   CartesianGrid,
+  LabelList,
   Legend,
   Line,
   ComposedChart,
@@ -17,9 +18,54 @@ export interface PercentCompleteChartPoint {
   actual: number | null;
 }
 
+interface ChartRow {
+  checkpoint: string;
+  planned: number | null;
+  actual: number | null;
+}
+
+interface ChartLabelContentProps {
+  x?: number | string;
+  y?: number | string;
+  value?: number | string;
+  index?: number;
+}
+
 interface PercentCompleteChartProps {
   points: PercentCompleteChartPoint[];
   title: string;
+}
+
+function roundedEquals(a: number, b: number | null | undefined): boolean {
+  return b !== null && b !== undefined && a.toFixed(1) === b.toFixed(1);
+}
+
+/** A point's value label is only drawn when it differs (at the displayed
+ * 1-decimal precision) from the previous point's — a flat run (e.g. several
+ * consecutive 100.0% checkpoints once a project finishes) would otherwise
+ * stack identical text on top of itself. Position is still driven by the
+ * parent <Line>'s own points; this only decides what text (if any) to draw
+ * at each one. */
+function makeDedupedLabel(rows: ChartRow[], seriesKey: "planned" | "actual", color: string, dy: number) {
+  return function DedupedLabel({ x, y, value, index }: ChartLabelContentProps) {
+    if (value === null || value === undefined || x === undefined || y === undefined) return null;
+    if (typeof index !== "number") return null;
+    const numeric = Number(value);
+    const previous = index > 0 ? rows[index - 1][seriesKey] : undefined;
+    if (roundedEquals(numeric, previous)) return null;
+    return (
+      <text
+        x={Number(x)}
+        y={Number(y) + dy}
+        textAnchor="middle"
+        fontSize={13}
+        fontWeight={700}
+        fill={color}
+      >
+        {`${numeric.toFixed(1)}%`}
+      </text>
+    );
+  };
 }
 
 /** Generic planned-vs-actual line chart — deliberately doesn't know about
@@ -39,7 +85,7 @@ export function PercentCompleteChart({ points, title }: PercentCompleteChartProp
     );
   }
 
-  const data = points.map((p) => ({
+  const data: ChartRow[] = points.map((p) => ({
     checkpoint: dateFormatter.format(new Date(`${p.checkpoint}T00:00:00`)),
     planned: p.planned,
     actual: p.actual,
@@ -48,8 +94,8 @@ export function PercentCompleteChart({ points, title }: PercentCompleteChartProp
   return (
     <div className="card p-4">
       <h3 className="mb-2 text-sm font-semibold text-jira-text">{title}</h3>
-      <ResponsiveContainer width="100%" height={320}>
-        <ComposedChart data={data} margin={{ top: 8, right: 16, left: 8, bottom: 8 }}>
+      <ResponsiveContainer width="100%" height={380}>
+        <ComposedChart data={data} margin={{ top: 36, right: 32, left: 8, bottom: 32 }}>
           <CartesianGrid strokeDasharray="3 3" stroke={chartColors.border} />
           <XAxis dataKey="checkpoint" tick={{ fontSize: 11, fill: chartColors.textSub }} />
           <YAxis
@@ -60,7 +106,7 @@ export function PercentCompleteChart({ points, title }: PercentCompleteChartProp
           />
           <Tooltip
             formatter={(value, name) => [
-              value === null || value === undefined ? "—" : `${Number(value).toFixed(0)}%`,
+              value === null || value === undefined ? "—" : `${Number(value).toFixed(1)}%`,
               name,
             ]}
           />
@@ -73,7 +119,12 @@ export function PercentCompleteChart({ points, title }: PercentCompleteChartProp
             dot={{ r: 3 }}
             strokeWidth={2}
             connectNulls={false}
-          />
+          >
+            <LabelList
+              dataKey="planned"
+              content={makeDedupedLabel(data, "planned", chartColors.blueDark, -12)}
+            />
+          </Line>
           <Line
             type="monotone"
             dataKey="actual"
@@ -82,7 +133,12 @@ export function PercentCompleteChart({ points, title }: PercentCompleteChartProp
             dot={{ r: 3 }}
             strokeWidth={2}
             connectNulls={false}
-          />
+          >
+            <LabelList
+              dataKey="actual"
+              content={makeDedupedLabel(data, "actual", chartColors.orange, 20)}
+            />
+          </Line>
         </ComposedChart>
       </ResponsiveContainer>
     </div>

@@ -16,6 +16,9 @@ from app.services.evm import (
     planned_percent_complete_project,
     planned_percent_complete_project_by_duration,
 )
+from app.services.working_calendar import WorkingCalendar
+
+CALENDAR = WorkingCalendar(working_days_per_week=5, holidays=frozenset())
 
 TASK_A = uuid.uuid4()
 
@@ -128,25 +131,61 @@ def test_planned_percent_complete_project_is_cost_weighted():
 
 
 def test_planned_percent_complete_project_by_duration_none_without_baseline():
-    assert planned_percent_complete_project_by_duration([], date(2026, 9, 16)) is None
+    assert planned_percent_complete_project_by_duration([], date(2026, 9, 16), CALENDAR) is None
 
 
 def test_planned_percent_complete_project_by_duration_is_duration_weighted_not_cost_weighted():
     # Same asymmetric-cost trick as the cost-weighted test above, but with
     # costs and date spans picked so the two weighting schemes give
-    # different answers, proving cost no longer factors in at all.
+    # different answers, proving cost no longer factors in at all. Dates are
+    # deliberately weekday-to-weekday (ADR-038: this now weighs by *working*
+    # days, not calendar days) — 2026-09-01 is a Tuesday, 2026-09-07 the
+    # following Monday, 2026-09-21 a Monday.
     task_b = uuid.uuid4()
     baseline_tasks = [
-        # 5-calendar-day span (9/1-9/5), fully elapsed by the status date —
-        # 100% of its span counts. Cost is huge but irrelevant here.
-        BaselineTaskEVMInput(TASK_A, date(2026, 9, 1), date(2026, 9, 5), 999999),
-        # 1-calendar-day span (9/20-9/20), not started yet — 0% of its span
+        # 5-working-day span (Tue 9/1 - Mon 9/7, skipping the weekend),
+        # fully elapsed by the status date — 100% of its span counts. Cost
+        # is huge but irrelevant here.
+        BaselineTaskEVMInput(TASK_A, date(2026, 9, 1), date(2026, 9, 7), 999999),
+        # 1-working-day span (Mon 9/21), not started yet — 0% of its span
         # counts. Cost is tiny but, again, irrelevant.
-        BaselineTaskEVMInput(task_b, date(2026, 9, 20), date(2026, 9, 20), 1),
+        BaselineTaskEVMInput(task_b, date(2026, 9, 21), date(2026, 9, 21), 1),
     ]
-    result = planned_percent_complete_project_by_duration(baseline_tasks, date(2026, 9, 16))
+    result = planned_percent_complete_project_by_duration(
+        baseline_tasks, date(2026, 9, 16), CALENDAR
+    )
     # total_days = 5 + 1 = 6; weighted = 100*5 + 0*1 = 500; 500/6 = 83.33%.
     assert result == pytest.approx(500 / 6)
+
+
+def test_planned_percent_complete_project_by_duration_excludes_weekends_from_weight():
+    # A calendar-day count would give this task span 7 days (Tue 9/1 through
+    # Mon 9/7 inclusive); the working-day count must exclude the Sat/Sun in
+    # between, giving 5 — proving the weight really is working days, not a
+    # relabeled calendar-day count (ADR-038).
+    baseline_tasks = [BaselineTaskEVMInput(TASK_A, date(2026, 9, 1), date(2026, 9, 7), 100)]
+    result = planned_percent_complete_project_by_duration(
+        baseline_tasks, date(2026, 9, 7), CALENDAR
+    )
+    assert result == pytest.approx(100.0)  # fully elapsed regardless of the weight
+    assert CALENDAR.working_days_between(date(2026, 9, 1), date(2026, 9, 7)) == 5
+
+
+def test_planned_percent_complete_project_by_duration_falls_back_when_all_zero_working_days():
+    # Both tasks' planned windows land entirely on a weekend (0 working
+    # days each) — the working-day-weighted formula is undefined (0/0), so
+    # this falls back to a plain average across tasks, mirroring
+    # rollup.compute_rollup's identical fallback.
+    task_b = uuid.uuid4()
+    baseline_tasks = [
+        BaselineTaskEVMInput(TASK_A, date(2026, 9, 5), date(2026, 9, 5), 100),  # Saturday
+        BaselineTaskEVMInput(task_b, date(2026, 9, 6), date(2026, 9, 6), 100),  # Sunday
+    ]
+    # Status date after both -> each task's own fraction is 1.0 (fully elapsed).
+    result = planned_percent_complete_project_by_duration(
+        baseline_tasks, date(2026, 9, 16), CALENDAR
+    )
+    assert result == pytest.approx(100.0)
 
 
 def test_percent_complete_at_or_before_none_without_any_snapshot():

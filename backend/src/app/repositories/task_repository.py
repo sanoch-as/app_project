@@ -97,7 +97,15 @@ async def create(
     estimated_hours: float | None,
     budgeted_cost: float,
     priority: TaskPriority,
+    status: TaskStatus = TaskStatus.NOT_STARTED,
+    percent_complete: float = 0,
+    external_key: str | None = None,
+    leaf_duration_days: int | None = None,
 ) -> Task:
+    # A freshly created task never has children yet, so its leaf-duration
+    # weight (see rollup.py) always starts out equal to its own duration —
+    # callers only need to override this explicitly in the rare case they
+    # already know better (none do today).
     task = Task(
         project_id=project_id,
         parent_task_id=parent_task_id,
@@ -107,10 +115,14 @@ async def create(
         start_date=start_date,
         end_date=end_date,
         duration_days=duration_days,
+        leaf_duration_days=leaf_duration_days if leaf_duration_days is not None else duration_days,
         is_milestone=is_milestone,
         estimated_hours=estimated_hours,
         budgeted_cost=budgeted_cost,
         priority=priority,
+        status=status,
+        percent_complete=percent_complete,
+        external_key=external_key,
     )
     db.add(task)
     await db.flush()

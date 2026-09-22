@@ -1,7 +1,7 @@
 import uuid
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -29,6 +29,9 @@ class TaskDependency(UUIDPKMixin, Base):
         default=DependencyType.FS, server_default=DependencyType.FS.value, nullable=False
     )
     lag_days: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    created_by_jira_import: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="false", nullable=False
+    )
 
     predecessor: Mapped["Task"] = relationship(
         foreign_keys=[predecessor_id], back_populates="successor_links"

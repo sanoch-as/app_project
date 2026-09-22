@@ -206,6 +206,7 @@ export interface TaskRead {
   late_finish: string | null;
   total_float: number | null;
   is_critical: boolean;
+  external_key: string | null;
   assignees: TaskAssigneeRead[];
   created_at: string;
   updated_at: string;
@@ -450,3 +451,15 @@ export interface ProjectDashboard {
 // ---------------------------------------------------------------------------
 
 export type ExportType = "tasks" | "worklogs" | "summary";
+
+// ---------------------------------------------------------------------------
+// Jira CSV import
+// ---------------------------------------------------------------------------
+
+export interface JiraImportResponse {
+  project_id: string;
+  created_count: number;
+  updated_count: number;
+  dependency_count: number;
+  warnings: string[];
+}

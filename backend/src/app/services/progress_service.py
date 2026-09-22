@@ -15,7 +15,7 @@ from app.repositories import (
     task_repository,
     worklog_repository,
 )
-from app.services import rollup
+from app.services import rollup, schedule_service
 from app.services.evm import (
     BaselineTaskEVMInput,
     EVMMetrics,
@@ -139,11 +139,12 @@ async def get_projected_progress(
     Status Date + baseline. Read-only/live, same as get_current_progress (ADR-013)."""
     tasks, task_inputs, baseline_tasks, _ = await _load_evm_inputs(db, project.id)
     active_baseline = await baseline_repository.get_active_baseline(db, project.id)
+    calendar = await schedule_service.get_calendar(db, project)
 
     planned_by_task = planned_percent_complete_by_task(baseline_tasks, status_date)
     project_planned = planned_percent_complete_project(baseline_tasks, status_date)
     project_planned_by_duration = planned_percent_complete_project_by_duration(
-        baseline_tasks, status_date
+        baseline_tasks, status_date, calendar
     )
     baseline_dates_by_task = {bt.task_id: bt for bt in baseline_tasks}
 
@@ -193,14 +194,21 @@ async def get_percent_complete_history(
     from start_date to end_date (plus the exact end_date if it doesn't land on the
     grid) — same checkpoint-stepping pattern as services/scurve.py's weekly loop, but
     with a caller-chosen step. "Planned" is fully known in advance (schedule-derived,
-    same as PV); "Actual" is None for any checkpoint after today (nothing to show yet)
-    and reconstructed from task_progress_snapshots for checkpoints at or before today —
-    None there too if no snapshot exists that far back (no history before this feature
-    shipped, not an error)."""
+    same as PV); "Actual" is None for any checkpoint after today (nothing to show yet),
+    reconstructed from task_progress_snapshots for any checkpoint strictly before today
+    (None there too if no snapshot exists that far back — no history before this
+    feature shipped, not an error), and for checkpoint == today reads the tasks' live,
+    current percent_complete directly rather than the snapshot (ADR-038) — the daily
+    snapshot is written once (by the cron or a manual "Recalcular ahora"), so relying on
+    it for "today" could show a stale value the moment someone edits a task's progress
+    afterward, out of step with the "Real hoy" figure shown elsewhere on the same page,
+    which already always reads live data."""
     tasks, task_inputs, baseline_tasks, _ = await _load_evm_inputs(db, project.id)
     today = _today()
+    calendar = await schedule_service.get_calendar(db, project)
     budgeted_cost_by_task = {ti.id: ti.budgeted_cost for ti in task_inputs}
     duration_by_task = {t.id: t.duration_days for t in rollup.leaf_tasks(tasks)}
+    leaf_tasks_today = rollup.leaf_tasks(tasks)
 
     raw_snapshots = await task_progress_snapshot_repository.list_up_to_date(
         db, project.id, end_date
@@ -218,6 +226,9 @@ async def get_percent_complete_history(
     def actual_at(checkpoint: date) -> float | None:
         if checkpoint > today:
             return None
+        if checkpoint == today:
+            total_cost = sum(ti.budgeted_cost for ti in task_inputs)
+            return (compute_ev(task_inputs) / total_cost * 100) if total_cost else None
         weighted_sum = 0.0
         total_cost = 0.0
         for task in tasks:
@@ -238,6 +249,8 @@ async def get_percent_complete_history(
         # to need the "current state" functions' plain-average fallback).
         if checkpoint > today:
             return None
+        if checkpoint == today:
+            return rollup.duration_weighted_percent_complete(leaf_tasks_today)
         weighted_sum = 0.0
         total_duration = 0
         for task in tasks:
@@ -257,7 +270,7 @@ async def get_percent_complete_history(
             planned_percent_complete=planned_percent_complete_project(baseline_tasks, checkpoint),
             actual_percent_complete=actual_at(checkpoint),
             planned_percent_complete_by_duration=planned_percent_complete_project_by_duration(
-                baseline_tasks, checkpoint
+                baseline_tasks, checkpoint, calendar
             ),
             actual_percent_complete_by_duration=actual_at_by_duration(checkpoint),
         )

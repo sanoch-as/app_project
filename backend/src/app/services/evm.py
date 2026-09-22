@@ -8,6 +8,8 @@ import uuid
 from dataclasses import dataclass
 from datetime import date
 
+from app.services.working_calendar import WorkingCalendar
+
 
 @dataclass(frozen=True)
 class TaskEVMInput:
@@ -51,6 +53,27 @@ def _prorated_planned_value(
     return planned_cost * _prorated_fraction(planned_start, planned_end, status_date)
 
 
+def _prorated_fraction_by_working_days(
+    planned_start: date, planned_end: date, status_date: date, calendar: WorkingCalendar
+) -> float:
+    """Same idea as `_prorated_fraction`, but measured in working days
+    instead of calendar days — used only by the duration-weighted "Por
+    plazo" planned %, so it measures duration the same way
+    `duration_weighted_percent_complete` ("Real") already does (ADR-038).
+    Falls back to 1.0 for a zero-working-day span reached past its own
+    start (e.g. a baseline window that lands entirely on weekends/holidays)
+    rather than dividing by zero."""
+    if status_date < planned_start:
+        return 0.0
+    if status_date >= planned_end:
+        return 1.0
+    total_working_days = calendar.working_days_between(planned_start, planned_end)
+    if not total_working_days:
+        return 1.0
+    elapsed_working_days = calendar.working_days_between(planned_start, status_date)
+    return elapsed_working_days / total_working_days
+
+
 def compute_pv(baseline_tasks: list[BaselineTaskEVMInput], status_date: date) -> float:
     return sum(
         _prorated_planned_value(
@@ -87,30 +110,38 @@ def planned_percent_complete_project(
 
 
 def planned_percent_complete_project_by_duration(
-    baseline_tasks: list[BaselineTaskEVMInput], status_date: date
+    baseline_tasks: list[BaselineTaskEVMInput], status_date: date, calendar: WorkingCalendar
 ) -> float | None:
     """Schedule-based counterpart to `planned_percent_complete_project` — MS
     Project's duration-weighted convention (see ADR-032/ADR-033) applied to
-    the project-level planned %: weights each task's own date-prorated
-    fraction (same `_prorated_fraction` used per-task by
-    `planned_percent_complete_by_task`) by its planned calendar-day span
-    (`planned_end_date - planned_start_date + 1`) instead of its planned
-    cost, so a project that doesn't track cost still gets a meaningful
-    "planned as of status_date" number for the Forecast tab's schedule-based
-    section. `None` only when there's no baseline at all (`baseline_tasks`
-    empty) — unlike the cost-weighted version, a real date span is never
-    zero, so no further fallback is needed."""
+    the project-level planned %: weights each task's own working-day-prorated
+    fraction (`_prorated_fraction_by_working_days`) by its planned working-day
+    span (`calendar.working_days_between(planned_start, planned_end)`)
+    instead of its planned cost — deliberately working days, not the raw
+    calendar-day span `planned_percent_complete_project`/
+    `planned_percent_complete_by_task` still use, so "Planeado" and "Real"
+    measure duration the same way in the Forecast tab's "Por plazo" section
+    (ADR-038; before that fix they disagreed even for a project with no
+    weekend/holiday work at all). `None` only when there's no baseline at
+    all (`baseline_tasks` empty); falls back to a plain average across tasks
+    if every one of them has a zero-working-day planned span (mirrors
+    `rollup.compute_rollup`'s own all-zero-weight fallback)."""
     if not baseline_tasks:
         return None
-    total_days = sum(
-        (bt.planned_end_date - bt.planned_start_date).days + 1 for bt in baseline_tasks
-    )
-    weighted = sum(
-        _prorated_fraction(bt.planned_start_date, bt.planned_end_date, status_date)
-        * ((bt.planned_end_date - bt.planned_start_date).days + 1)
+    fractions_and_weights = [
+        (
+            _prorated_fraction_by_working_days(
+                bt.planned_start_date, bt.planned_end_date, status_date, calendar
+            ),
+            calendar.working_days_between(bt.planned_start_date, bt.planned_end_date),
+        )
         for bt in baseline_tasks
-    )
-    return weighted / total_days * 100
+    ]
+    total_days = sum(weight for _, weight in fractions_and_weights)
+    if total_days:
+        weighted = sum(fraction * weight for fraction, weight in fractions_and_weights)
+        return weighted / total_days * 100
+    return sum(fraction for fraction, _ in fractions_and_weights) / len(fractions_and_weights) * 100
 
 
 @dataclass(frozen=True)

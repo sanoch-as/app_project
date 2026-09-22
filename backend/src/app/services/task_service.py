@@ -4,13 +4,14 @@ from datetime import date
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.enums import TaskPriority
-from app.core.exceptions import ValidationAppError
+from app.core.exceptions import ConflictError, ValidationAppError
 from app.core.security import CurrentUser
 from app.models.project import Project
 from app.models.task import Task
 from app.repositories import task_repository, user_repository
 from app.schemas.task import MAX_WORKING_DAYS, TaskAssigneeInput
 from app.services import project_service, rollup, schedule_service
+from app.services.jira_csv_parser import PROJECT_ROOT_ISSUE_KEY
 from app.services.working_calendar import WorkingCalendar
 
 get_calendar = schedule_service.get_calendar
@@ -156,6 +157,12 @@ async def update_task(
         effective_duration = 0 if updated.is_milestone else max(updated.duration_days, 1)
         updated.duration_days = effective_duration
         updated.end_date = calendar.add_working_days(updated.start_date, effective_duration)
+        if not children:
+            # A leaf's leaf_duration_days always mirrors its own
+            # duration_days (see rollup.py) — a parent's is never touched
+            # here, since ROLLUP_MANAGED_FIELDS already rejected this update
+            # above if `children` were non-empty and duration changed.
+            updated.leaf_duration_days = effective_duration
 
     if assignees is not None:
         await task_repository.set_assignees(
@@ -179,6 +186,17 @@ async def update_task(
 
 
 async def delete_task(db: AsyncSession, project: Project, task: Task) -> None:
+    if task.external_key == PROJECT_ROOT_ISSUE_KEY:
+        # `parent_task_id` cascades on delete (ADR-030) — this row is the
+        # Jira importer's synthetic project-summary root (ADR-036), so
+        # deleting it would silently wipe out every task it ever imported.
+        # Deleting the whole project (or editing the CSV and resyncing) is
+        # the only supported way to remove that content.
+        raise ConflictError(
+            "This task is an auto-generated project-summary root created by the Jira "
+            "CSV import and can't be deleted directly — delete the project instead",
+            code="jira_project_root_not_deletable",
+        )
     parent_task_id = task.parent_task_id
     await task_repository.delete(db, task)
     calendar = await get_calendar(db, project)
