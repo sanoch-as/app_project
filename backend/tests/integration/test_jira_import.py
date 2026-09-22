@@ -374,6 +374,43 @@ async def test_import_creates_sequential_dependency_for_sibling_leaves(client: A
     assert dep["lag_days"] == 0
 
 
+async def test_reimport_unchanged_file_leaves_the_same_auto_dependency_row_in_place(
+    client: AsyncClient,
+):
+    # Regression check (ADR-039): an unchanged resync used to delete every
+    # auto-generated dependency and recreate it from scratch, including ones
+    # whose (predecessor_id, successor_id) pair hadn't changed at all — a
+    # delete-then-insert of the *same* pair in one flush risks tripping the
+    # unique constraint on that pair depending on statement ordering. The
+    # importer now leaves an unchanged edge alone instead of churning it.
+    admin = await register_admin(client)
+    admin_token = admin["tokens"]["access_token"]
+
+    first = await _import_as_new_project(client, admin_token, _sibling_phase_rows())
+    project_id = first["project_id"]
+    assert first["dependency_count"] == 1
+
+    gantt = await client.get(
+        f"/api/v1/projects/{project_id}/gantt", headers=auth_header(admin_token)
+    )
+    original_dependency_id = gantt.json()["dependencies"][0]["id"]
+
+    reimport = await client.post(
+        f"/api/v1/projects/{project_id}/tasks/import/jira-csv",
+        files={"file": ("jira.csv", _csv_bytes(_sibling_phase_rows()), "text/csv")},
+        headers=auth_header(admin_token),
+    )
+    assert reimport.status_code == 200, reimport.text
+    assert reimport.json()["dependency_count"] == 1
+
+    gantt2 = await client.get(
+        f"/api/v1/projects/{project_id}/gantt", headers=auth_header(admin_token)
+    )
+    dependencies = gantt2.json()["dependencies"]
+    assert len(dependencies) == 1
+    assert dependencies[0]["id"] == original_dependency_id
+
+
 async def test_reimport_recalculates_auto_dependencies_but_preserves_manual_ones(
     client: AsyncClient,
 ):
