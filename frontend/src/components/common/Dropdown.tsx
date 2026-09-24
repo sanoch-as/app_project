@@ -73,7 +73,14 @@ export function Dropdown({ trigger, children, align = "left", panelClassName }: 
     // robust than re-tracking position on every scroll tick. `capture:
     // true` catches scroll events from any nested scroll container, since
     // `scroll` doesn't bubble but is still observable in the capture phase.
-    function onScroll() {
+    // Scrolling *inside* the panel itself (e.g. a long list, or the emoji
+    // picker's own internal scroll area) must NOT close it — without this
+    // check, the very act of scrolling the panel's content closed it
+    // before the scroll could register at all.
+    function onScroll(event: Event) {
+      if (panelRef.current && event.target instanceof Node && panelRef.current.contains(event.target)) {
+        return;
+      }
       setOpen(false);
     }
     document.addEventListener("mousedown", onPointerDown);

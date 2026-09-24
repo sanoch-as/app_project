@@ -3,6 +3,7 @@ import { NavLink, Outlet, useParams } from "react-router-dom";
 import clsx from "clsx";
 import { useTranslation } from "react-i18next";
 import {
+  BookOpen,
   Calendar,
   CalendarClock,
   FileBarChart2,
@@ -43,6 +44,7 @@ export function ProjectDetailPage() {
     { to: "worklogs", label: t("projects.tabs.worklogs"), icon: Clock },
     { to: "members", label: t("projects.tabs.members"), icon: Users },
     { to: "reports", label: t("projects.tabs.reports"), icon: FileBarChart2 },
+    { to: "docs", label: t("projects.tabs.docs"), icon: BookOpen },
   ];
 
   if (isLoading) return <LoadingSpinner label={t("projects.detail.loading")} />;

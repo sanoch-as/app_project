@@ -16,6 +16,11 @@ import { ProjectForecastTab } from "@/pages/projects/ProjectForecastTab";
 import { ProjectWorklogsTab } from "@/pages/projects/ProjectWorklogsTab";
 import { ProjectMembersTab } from "@/pages/projects/ProjectMembersTab";
 import { ProjectReportsTab } from "@/pages/projects/ProjectReportsTab";
+import { ProjectDocsTab } from "@/pages/projects/ProjectDocsTab";
+import { DocsHomePage } from "@/pages/docs/DocsHomePage";
+import { SpaceWorkspace } from "@/pages/docs/SpaceWorkspace";
+import { PageDetailPane } from "@/pages/docs/PageDetailPane";
+import { PageRedirect } from "@/pages/docs/PageRedirect";
 import { WorklogsReportPage } from "@/pages/reports/WorklogsReportPage";
 import { UsersSettingsPage } from "@/pages/settings/UsersSettingsPage";
 import { PreferencesSettingsPage } from "@/pages/settings/PreferencesSettingsPage";
@@ -48,6 +53,16 @@ export default function App() {
           <Route path="worklogs" element={<ProjectWorklogsTab />} />
           <Route path="members" element={<ProjectMembersTab />} />
           <Route path="reports" element={<ProjectReportsTab />} />
+          <Route path="docs" element={<ProjectDocsTab />}>
+            <Route path=":spaceId" element={<SpaceWorkspace />}>
+              <Route path="pages/:pageId" element={<PageDetailPane />} />
+            </Route>
+          </Route>
+        </Route>
+        <Route path="/docs" element={<DocsHomePage />} />
+        <Route path="/docs/pages/:pageId" element={<PageRedirect />} />
+        <Route path="/docs/:spaceId" element={<SpaceWorkspace />}>
+          <Route path="pages/:pageId" element={<PageDetailPane />} />
         </Route>
         <Route path="/reports" element={<WorklogsReportPage />} />
         <Route path="/settings/users" element={<UsersSettingsPage />} />

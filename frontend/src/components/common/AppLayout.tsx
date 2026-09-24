@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import {
   BarChart3,
   Bell,
+  BookOpen,
   FolderKanban,
   HelpCircle,
   LayoutDashboard,
@@ -48,6 +49,7 @@ export function AppLayout() {
     () => [
       { to: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
       { to: "/projects", label: t("nav.projects"), icon: FolderKanban },
+      { to: "/docs", label: t("nav.docs"), icon: BookOpen },
       { to: "/reports", label: t("nav.reports"), icon: BarChart3 },
     ],
     [t],

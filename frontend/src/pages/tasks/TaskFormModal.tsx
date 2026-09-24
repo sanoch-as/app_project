@@ -4,6 +4,7 @@ import { Modal } from "@/components/common/Modal";
 import { ErrorMessage } from "@/components/common/ErrorMessage";
 import { useCreateTask, useUpdateTask } from "@/hooks/useTasks";
 import { JIRA_PROJECT_ROOT_KEY } from "@/lib/jiraImport";
+import { DocReferences } from "@/components/docs/DocReferences";
 import { CommentThread } from "@/pages/tasks/CommentThread";
 import { TaskBreadcrumb } from "@/pages/tasks/TaskBreadcrumb";
 import type { TaskCreate, TaskPriority, TaskRead, TaskUpdate, UserRead } from "@/types/api";
@@ -393,6 +394,12 @@ export function TaskFormModal({
                 </div>
               )}
             </div>
+
+            {initial && (
+              <div className="pt-4">
+                <DocReferences referencedType="task" referencedId={initial.id} />
+              </div>
+            )}
           </aside>
         </div>
 

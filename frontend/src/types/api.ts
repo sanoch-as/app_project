@@ -465,3 +465,83 @@ export interface JiraImportResponse {
   dependency_count: number;
   warnings: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Documentación (Spaces / Pages / mentions) — ADR-042
+// ---------------------------------------------------------------------------
+
+export type ReferencedEntityType = "project" | "task" | "page";
+
+export interface SpaceRead {
+  id: string;
+  organization_id: string;
+  project_id: string | null;
+  name: string;
+  description: string | null;
+  icon: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface SpaceCreate {
+  project_id?: string | null;
+  name: string;
+  description?: string | null;
+  icon?: string | null;
+}
+
+export interface SpaceUpdate {
+  name?: string | null;
+  description?: string | null;
+  icon?: string | null;
+}
+
+/** Tiptap's own JSON document shape — treated as an opaque blob everywhere
+ * outside the editor itself. */
+export type PageContent = Record<string, unknown>;
+
+export interface PageSummary {
+  id: string;
+  space_id: string;
+  parent_page_id: string | null;
+  title: string;
+  sort_order: number;
+  updated_at: string;
+}
+
+export interface PageRead extends PageSummary {
+  content: PageContent;
+  created_at: string;
+}
+
+export interface PageCreate {
+  parent_page_id?: string | null;
+  title: string;
+  content?: PageContent;
+}
+
+export interface PageUpdate {
+  title?: string | null;
+  content?: PageContent | null;
+}
+
+export interface PageMove {
+  parent_page_id: string | null;
+  position: number;
+}
+
+export interface PageReferenceSummary {
+  page_id: string;
+  page_title: string;
+  space_id: string;
+  space_name: string;
+  project_id: string | null;
+}
+
+export interface MentionSearchResult {
+  type: ReferencedEntityType;
+  id: string;
+  label: string;
+  sublabel: string | null;
+}

@@ -1,0 +1,404 @@
+/* Minimal prose styling for Tiptap's ProseMirror content — this app has no
+   @tailwindcss/typography plugin, so headings/lists/tables/etc need their
+   own rules here (mirrors components/gantt/gantt-overrides.css's pattern of
+   a component-scoped stylesheet instead of bloating styles/index.css). */
+
+.doc-editor-content .ProseMirror {
+  outline: none;
+  font-size: 0.875rem;
+  line-height: 1.6;
+  color: #172b4d;
+}
+
+.doc-editor-content .ProseMirror > * + * {
+  margin-top: 0.6em;
+}
+
+.doc-editor-content .ProseMirror h1 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-top: 1.2em;
+}
+
+.doc-editor-content .ProseMirror h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-top: 1em;
+}
+
+.doc-editor-content .ProseMirror h3 {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin-top: 0.9em;
+}
+
+.doc-editor-content .ProseMirror ul,
+.doc-editor-content .ProseMirror ol {
+  padding-left: 1.4rem;
+}
+
+.doc-editor-content .ProseMirror ul {
+  list-style: disc;
+}
+
+.doc-editor-content .ProseMirror ol {
+  list-style: decimal;
+}
+
+.doc-editor-content .ProseMirror blockquote {
+  border-left: 3px solid #dcdfe4;
+  padding-left: 0.75rem;
+  color: #626f86;
+}
+
+.doc-editor-content .ProseMirror code {
+  background: #f1f2f4;
+  border-radius: 3px;
+  padding: 0.1em 0.3em;
+  font-size: 0.85em;
+}
+
+/* Code block (Confluence-style "code snippet" — language picker, line
+   numbers, syntax highlighting via lowlight). Its own custom NodeView
+   (CodeBlockView.tsx) fully replaces the plain StarterKit codeBlock, so
+   this is the only styling for it — no generic `.ProseMirror pre` rule.
+   A pixel width (resized via the handle below) instead of stretching to
+   the full page width, same idea as the checklist block's own resizing. */
+.doc-editor-content .doc-code-block {
+  position: relative;
+  border: 1px solid #dcdfe4;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #f4f5f7;
+  font-size: 0.8125rem;
+  box-sizing: border-box;
+}
+
+.doc-editor-content .doc-code-block-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.6rem;
+  background: #eef0f2;
+  border-bottom: 1px solid #dcdfe4;
+}
+
+.doc-editor-content .doc-code-block-language {
+  background: transparent;
+  color: #44546f;
+  border: none;
+  font-size: 0.75rem;
+  outline: none;
+}
+
+.doc-editor-content .doc-code-block-language option {
+  color: #172b4d;
+}
+
+.doc-editor-content .doc-code-block-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #626f86;
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+}
+
+.doc-editor-content .doc-code-block-copy:hover {
+  background: #dcdfe4;
+  color: #172b4d;
+}
+
+.doc-editor-content .doc-code-block-body {
+  display: flex;
+  overflow-x: auto;
+}
+
+.doc-editor-content .doc-code-block-gutter {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 0.75rem 0.5rem;
+  text-align: right;
+  color: #a5adba;
+  user-select: none;
+  border-right: 1px solid #dcdfe4;
+}
+
+.doc-editor-content .doc-code-block-gutter span {
+  line-height: 1.55;
+}
+
+.doc-editor-content .doc-code-block-content {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0.75rem 0.75rem 0.75rem 0.5rem;
+  color: #172b4d;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  line-height: 1.55;
+  white-space: pre;
+  outline: none;
+}
+
+.doc-editor-content .doc-code-block-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  border-radius: 0 6px 6px 0;
+}
+
+.doc-editor-content .doc-code-block-resize-handle:hover {
+  background: rgba(38, 132, 255, 0.25);
+}
+
+/* highlight.js token theme — a small hand-picked palette (not a full
+   imported theme file) matching the rest of this app's color tokens,
+   tuned for the light-gray background above. */
+.doc-editor-content .doc-code-block-content .hljs-comment,
+.doc-editor-content .doc-code-block-content .hljs-quote {
+  color: #8590a2;
+  font-style: italic;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-keyword,
+.doc-editor-content .doc-code-block-content .hljs-selector-tag,
+.doc-editor-content .doc-code-block-content .hljs-literal,
+.doc-editor-content .doc-code-block-content .hljs-section,
+.doc-editor-content .doc-code-block-content .hljs-tag,
+.doc-editor-content .doc-code-block-content .hljs-name {
+  color: #de350b;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-string,
+.doc-editor-content .doc-code-block-content .hljs-template-tag,
+.doc-editor-content .doc-code-block-content .hljs-regexp,
+.doc-editor-content .doc-code-block-content .hljs-addition {
+  color: #216e4e;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-attr,
+.doc-editor-content .doc-code-block-content .hljs-attribute {
+  color: #8270db;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-number,
+.doc-editor-content .doc-code-block-content .hljs-symbol {
+  color: #e56910;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-title,
+.doc-editor-content .doc-code-block-content .hljs-title.function_,
+.doc-editor-content .doc-code-block-content .hljs-built_in {
+  color: #0055cc;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-type,
+.doc-editor-content .doc-code-block-content .hljs-class .hljs-title {
+  color: #006644;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-variable,
+.doc-editor-content .doc-code-block-content .hljs-meta {
+  color: #6b778c;
+}
+
+.doc-editor-content .doc-code-block-content .hljs-deletion {
+  background: rgba(226, 72, 61, 0.15);
+}
+
+.doc-editor-content .doc-code-block-content .hljs-addition {
+  background: rgba(33, 110, 78, 0.12);
+}
+
+.doc-editor-content .ProseMirror img {
+  max-width: 100%;
+  border-radius: 4px;
+}
+
+.doc-editor-content .ProseMirror a {
+  color: #0c66e4;
+  text-decoration: underline;
+}
+
+/* Column resizing (Tiptap's `resizable: true`) sets an explicit pixel width
+   per column via a <colgroup>/data-colwidth — deliberately NOT `width:
+   100%` here (that's what prosemirror-tables' own default stylesheet uses,
+   but it stretches every resized column proportionally to still fill the
+   container, which defeats resizing down to a narrower table). `width:
+   auto` + `table-layout: fixed` lets the table's own width be the sum of
+   its columns' widths instead. */
+.doc-editor-content .ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
+
+.doc-editor-content .ProseMirror table {
+  border-collapse: collapse;
+  width: auto;
+  max-width: 100%;
+  table-layout: fixed;
+  /* A freshly-inserted table has no data-colwidth on any cell yet — this is
+     its starting per-column width (still overridable narrower once the
+     user actually drags a column, since that rule only applies to cells
+     without an explicit data-colwidth). */
+  --default-cell-min-width: 6rem;
+}
+
+.doc-editor-content .ProseMirror th,
+.doc-editor-content .ProseMirror td {
+  border: 1px solid #dcdfe4;
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+  text-align: left;
+  box-sizing: border-box;
+  position: relative;
+}
+
+.doc-editor-content .ProseMirror td:not([data-colwidth]):not(.column-resize-dragging),
+.doc-editor-content .ProseMirror th:not([data-colwidth]):not(.column-resize-dragging) {
+  min-width: var(--default-cell-min-width);
+}
+
+.doc-editor-content .ProseMirror th {
+  background: #fafbfc;
+  font-weight: 600;
+}
+
+.doc-editor-content .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  z-index: 20;
+  background-color: #2684ff;
+  pointer-events: none;
+}
+
+.doc-editor-content .ProseMirror.resize-cursor {
+  cursor: col-resize;
+}
+
+.doc-editor-content .ProseMirror .selectedCell:after {
+  z-index: 2;
+  position: absolute;
+  content: "";
+  inset: 0;
+  background: rgba(38, 132, 255, 0.15);
+  pointer-events: none;
+}
+
+/* Mention pills — the extra 2px vertical padding is because these render as
+   inline <span>s, not buttons, so there's no button reset absorbing it. */
+.doc-editor-content .doc-mention {
+  display: inline-block;
+  border-radius: 4px;
+  padding: 0 0.35em;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.doc-editor-content .doc-mention-project {
+  background: #e9f2ff;
+  color: #0c66e4;
+}
+
+.doc-editor-content .doc-mention-task {
+  background: #f1f2f4;
+  color: #44546f;
+}
+
+.doc-editor-content .doc-mention-page {
+  background: #dcfff1;
+  color: #216e4e;
+}
+
+/* Highlight mark — Tiptap sets `background-color` as an inline style per
+   use (multicolor: true), this just gives it a bit of shape/padding. */
+.doc-editor-content .ProseMirror mark {
+  border-radius: 3px;
+  padding: 0 0.1em;
+}
+
+/* Status chip — the NodeView already inline-styles the pill's own colors;
+   this just makes sure the wrapper behaves as a plain inline element. */
+.doc-editor-content .doc-status-chip-wrapper {
+  display: inline;
+  vertical-align: middle;
+}
+
+/* Checklist block — a fixed pixel width (resized via the handle below)
+   instead of stretching to the full page width, same idea as the table's
+   own resizable columns. */
+.doc-editor-content .doc-checklist-block {
+  position: relative;
+  border: 1px solid #dcdfe4;
+  border-radius: 6px;
+  padding: 0.6rem 1rem 0.6rem 0.75rem;
+  background: #fafbfc;
+  box-sizing: border-box;
+}
+
+.doc-editor-content .doc-checklist-resize-handle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 8px;
+  cursor: ew-resize;
+  border-radius: 0 6px 6px 0;
+}
+
+.doc-editor-content .doc-checklist-resize-handle:hover {
+  background: rgba(38, 132, 255, 0.25);
+}
+
+/* `ul[data-type="taskList"]`/`li[data-checked]` aren't scoped to
+   `.doc-checklist-block` — TaskItem's own `- [ ] ` input-rule shortcut can
+   create a bare task list outside of it too, and both need this styling.
+   NOTE: TaskItem's real editable rendering comes from its own imperative
+   `addNodeView` (see @tiptap/extension-list), which — unlike its
+   `renderHTML` fallback — never sets `data-type="taskItem"` on the <li>;
+   `data-checked` (always "true"/"false") is the only attribute it reliably
+   sets, so that's what every taskItem selector below keys off of instead. */
+.doc-editor-content .ProseMirror ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+
+.doc-editor-content .ProseMirror li[data-checked] {
+  display: flex !important;
+  align-items: flex-start;
+  gap: 0.4rem;
+  margin: 0.2rem 0;
+  list-style: none;
+}
+
+.doc-editor-content .ProseMirror li[data-checked] > label {
+  display: flex;
+  align-items: center;
+  padding-top: 0.15rem;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.doc-editor-content .ProseMirror li[data-checked] > div {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.doc-editor-content .ProseMirror li[data-checked] > div > p {
+  margin: 0;
+}
+
+.doc-editor-content .ProseMirror li[data-checked="true"] > div {
+  color: #626f86;
+  text-decoration: line-through;
+}

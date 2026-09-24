@@ -14,6 +14,7 @@ import { SCurveChart } from "@/components/scurve/SCurveChart";
 import { OverdueTasksList } from "@/components/dashboard/OverdueTasksList";
 import { UpcomingMilestonesList } from "@/components/dashboard/UpcomingMilestonesList";
 import { DonutChart } from "@/components/reports/DonutChart";
+import { DocReferences } from "@/components/docs/DocReferences";
 import { ProjectRoadmap } from "@/pages/projects/ProjectRoadmap";
 import { chartColors } from "@/styles/chartColors";
 import type { TaskPriority, TaskStatus } from "@/types/api";
@@ -124,6 +125,7 @@ export function ProjectOverviewTab() {
               <DonutChart title={t("projects.overview.tasksByPriority")} data={priorityData} />
             </div>
           )}
+          <DocReferences referencedType="project" referencedId={project.id} />
         </>
       )}
     </div>
