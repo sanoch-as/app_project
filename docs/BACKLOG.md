@@ -23,9 +23,13 @@ Per `prompt-claude-code-plataforma-pm.md` section 4.2. Nothing below is implemen
 - Chat.
 
 ## I. Notion-style Documentation
-- Wiki pages.
-- Relational databases with rollups.
-- Document templates.
+- ~~Wiki pages.~~ Shipped (ADR-042): Spaces (project-tied or independent) containing a tree of Pages with rich-text content, cross-linked to projects/tasks/other pages via a server-tracked mention/reference system. Backend (Phase A) complete; frontend editor/UI (Phase B) in progress in the same effort.
+- Relational databases with rollups — deferred to v2, not designed (Notion's most complex feature; explicitly out of scope for the v1 wiki).
+- Document templates — deferred to v2.
+- File/image upload for pages (Vercel Blob) — v1 pages only support external-URL images/links; no upload flow exists yet.
+- Page drag-and-drop reordering UI — the backend (`move_page`/`PageMove`) ships in Phase A regardless; only the pointer-based drag UI itself is deferred (a simple "Move" modal calling the existing endpoint is an acceptable v1 substitute).
+- Granular per-space viewer/editor roles — v1 spaces use the same flat "if you can see it, you can edit it" model as the rest of the app; no new ACL table.
+- Mention labels inside saved page content are cached at insertion time, not resolved live — renaming a mentioned project/task/page doesn't retroactively update old mentions' displayed text (ADR-042).
 
 ## J. Advanced Administration
 - Granular per-project roles (e.g. `project_manager`, `viewer`) beyond the two global roles (`admin`/`member`) implemented in v1.

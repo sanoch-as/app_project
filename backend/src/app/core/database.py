@@ -11,6 +11,7 @@ from app.core.enums import (
     DependencyType,
     Language,
     ProjectStatus,
+    ReferencedEntityType,
     TaskPriority,
     TaskStatus,
     UserRole,
@@ -44,6 +45,7 @@ class Base(DeclarativeBase):
         DependencyType: _pg_enum(DependencyType, "dependency_type"),
         Language: _pg_enum(Language, "language"),
         DateFormat: _pg_enum(DateFormat, "date_format"),
+        ReferencedEntityType: _pg_enum(ReferencedEntityType, "referenced_entity_type"),
     }
 
 

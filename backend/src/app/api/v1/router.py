@@ -6,10 +6,13 @@ from app.api.v1.endpoints import (
     dashboard,
     dependencies,
     jira_import,
+    mentions,
     organizations,
+    pages,
     progress,
     projects,
     reports,
+    spaces,
     task_comments,
     tasks,
     users,
@@ -32,3 +35,6 @@ api_router.include_router(progress.router)
 api_router.include_router(progress.cron_router)
 api_router.include_router(dashboard.router)
 api_router.include_router(jira_import.router)
+api_router.include_router(spaces.router)
+api_router.include_router(pages.router)
+api_router.include_router(mentions.router)

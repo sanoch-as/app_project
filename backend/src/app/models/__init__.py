@@ -4,9 +4,12 @@
 from app.models.baseline import Baseline, BaselineTask
 from app.models.dependency import TaskDependency
 from app.models.organization import Organization
+from app.models.page import Page
+from app.models.page_reference import PageReference
 from app.models.progress_snapshot import ProgressSnapshot
 from app.models.project import Project, ProjectHoliday, ProjectMember
 from app.models.refresh_token import RefreshToken
+from app.models.space import Space
 from app.models.task import Task, TaskAssignee
 from app.models.task_comment import TaskComment
 from app.models.task_progress_snapshot import TaskProgressSnapshot
@@ -29,4 +32,7 @@ __all__ = [
     "TaskComment",
     "ProgressSnapshot",
     "TaskProgressSnapshot",
+    "Space",
+    "Page",
+    "PageReference",
 ]

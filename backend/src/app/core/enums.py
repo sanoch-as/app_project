@@ -43,3 +43,9 @@ class DependencyType(enum.StrEnum):
     SS = "SS"
     FF = "FF"
     SF = "SF"
+
+
+class ReferencedEntityType(enum.StrEnum):
+    PROJECT = "project"
+    TASK = "task"
+    PAGE = "page"
